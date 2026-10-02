@@ -1,0 +1,27 @@
+# Root protection for Committee Manager.
+# Prefer setting the domain document root to the "public/" folder.
+# This file is a fallback if the project root is used as the web root.
+
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # Keep requests already under /public as-is
+  RewriteRule ^public/ - [L]
+
+  # Send app traffic into public/
+  RewriteCond %{REQUEST_URI} !^/public/
+  RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+
+# Block sensitive files even if document root is project root
+<IfModule mod_authz_core.c>
+  <FilesMatch "^(\.env|\.env\..*|composer\.(json|lock)|Code\.gs|appsscript\.json)$">
+    Require all denied
+  </FilesMatch>
+</IfModule>
+
+RedirectMatch 404 /\.git
+RedirectMatch 404 /\.env
+RedirectMatch 404 ^/(config|src|sql|scripts|templates)/
