@@ -39,11 +39,10 @@ final class Database
                 PDO::ATTR_EMULATE_PREPARES => false,
             ]);
         } catch (PDOException $e) {
-            throw new PDOException(
-                'Database connection failed (host=' . $config['host'] . ', db=' . $config['name'] . ', user=' . $config['user'] . '): ' . $e->getMessage(),
-                (int) $e->getCode(),
-                $e
-            );
+            error_log('[CommitteeManager] Database connection failed'
+                . ' (host=' . $config['host'] . ', db=' . $config['name'] . ', user=' . $config['user'] . '): '
+                . $e->getMessage());
+            throw new PDOException('Database connection failed.', (int) $e->getCode(), $e);
         }
 
         return self::$pdo;

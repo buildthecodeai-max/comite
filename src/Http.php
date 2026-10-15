@@ -38,4 +38,49 @@ final class Http
     {
         return (string) ($_GET['action'] ?? '');
     }
+
+    /**
+     * Returns a client-safe error string for an uncaught exception and logs
+     * the real details server-side via error_log().
+     *
+     * Rules:
+     *  - PHP engine errors (TypeError, ParseError, …) → generic message
+     *  - PDOException or SQLSTATE in message → DB error message
+     *  - Message contains a filesystem path → generic message
+     *  - RuntimeException thrown intentionally by app code → pass through
+     *  - Anything else → generic message
+     */
+    public static function sanitizeError(\Throwable $e): string
+    {
+        error_log('[CommitteeManager] ' . get_class($e) . ': ' . $e->getMessage()
+            . ' in ' . $e->getFile() . ':' . $e->getLine());
+
+        if ($e instanceof \Error) {
+            return 'Internal server error.';
+        }
+
+        if ($e instanceof \PDOException) {
+            return 'A database error occurred.';
+        }
+
+        $msg = $e->getMessage();
+
+        if (stripos($msg, 'SQLSTATE') !== false) {
+            return 'A database error occurred.';
+        }
+
+        if (stripos($msg, 'Database connection failed') !== false) {
+            return 'Database connection failed. Check server configuration.';
+        }
+
+        if (preg_match('#[/\\\\](var|home|usr|tmp|www|public_html|htdocs)[/\\\\]#i', $msg)) {
+            return 'Internal server error.';
+        }
+
+        if ($e instanceof \RuntimeException) {
+            return $msg;
+        }
+
+        return 'Internal server error.';
+    }
 }

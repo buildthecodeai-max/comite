@@ -37,5 +37,5 @@ try {
     $data = (new DataRepository())->loadPublicInfo();
     Http::json($data);
 } catch (\Throwable $e) {
-    Http::json(['ok' => false, 'error' => $e->getMessage()], 500);
+    Http::json(['ok' => false, 'error' => Http::sanitizeError($e)], 500);
 }

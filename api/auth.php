@@ -326,9 +326,5 @@ try {
             Http::json(['ok' => false, 'error' => 'Unknown action'], 404);
     }
 } catch (\Throwable $e) {
-    $message = $e->getMessage();
-    if (stripos($message, 'Database connection failed') !== false || stripos($message, 'SQLSTATE') !== false) {
-        $message = 'Database connection failed. Check .env DB_HOST/DB_NAME/DB_USER/DB_PASS on the server. Open /api/health.php for details.';
-    }
-    Http::json(['ok' => false, 'error' => $message], 500);
+    Http::json(['ok' => false, 'error' => Http::sanitizeError($e)], 500);
 }
