@@ -81,6 +81,7 @@ final class Auth
             return false;
         }
 
+        session_regenerate_id(true);
         $_SESSION['role'] = 'admin';
         unset($_SESSION['member_id'], $_SESSION['user_id']);
 
@@ -102,6 +103,7 @@ final class Auth
             return false;
         }
 
+        session_regenerate_id(true);
         $_SESSION['role']    = in_array($row['role'], ['owner', 'app_user'], true) ? $row['role'] : 'owner';
         $_SESSION['user_id'] = (int) $row['id'];
         unset($_SESSION['member_id']);
@@ -115,6 +117,7 @@ final class Auth
             return false;
         }
 
+        session_regenerate_id(true);
         $_SESSION['role']      = 'user';
         $_SESSION['member_id'] = $memberId;
         unset($_SESSION['user_id']);

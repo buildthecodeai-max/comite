@@ -10,8 +10,20 @@ use CommitteeManager\Http;
 use CommitteeManager\MultiCommitteeRepository;
 use CommitteeManager\PasswordResetService;
 
-header('Access-Control-Allow-Origin: ' . ($_SERVER['HTTP_ORIGIN'] ?? '*'));
-header('Access-Control-Allow-Credentials: true');
+(function () {
+    $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+    if ($origin === '') return;
+    $host = (string) (parse_url($origin, PHP_URL_HOST) ?? '');
+    $serverHost = explode(':', $_SERVER['HTTP_HOST'] ?? '')[0];
+    $envAllowed = trim((string) ($_ENV['ALLOWED_ORIGIN'] ?? (getenv('ALLOWED_ORIGIN') ?: '')));
+    if ($host !== '' && $host === $serverHost) {
+        header('Access-Control-Allow-Origin: ' . $origin);
+        header('Access-Control-Allow-Credentials: true');
+    } elseif ($envAllowed !== '' && $origin === $envAllowed) {
+        header('Access-Control-Allow-Origin: ' . $origin);
+        header('Access-Control-Allow-Credentials: true');
+    }
+})();
 header('Access-Control-Allow-Headers: Content-Type');
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 
