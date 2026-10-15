@@ -1,8 +1,8 @@
 RewriteEngine On
 
-# Force HTTPS (recommended on cPanel once SSL is active)
-# RewriteCond %{HTTPS} !=on
-# RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+# Force HTTPS
+RewriteCond %{HTTPS} !=on
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
 # Real API entrypoints live in public/api/*.php (cPanel-safe).
 # Do not rewrite them outside the document root.
