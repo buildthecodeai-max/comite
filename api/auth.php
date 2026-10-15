@@ -9,6 +9,7 @@ use CommitteeManager\DataRepository;
 use CommitteeManager\Http;
 use CommitteeManager\MultiCommitteeRepository;
 use CommitteeManager\PasswordResetService;
+use CommitteeManager\RateLimiter;
 
 (function () {
     $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -63,15 +64,20 @@ try {
     switch ($action) {
         case 'login':
             $role = (string) ($body['role'] ?? '');
+            $ip   = RateLimiter::clientIp();
+
             if ($role === 'admin') {
                 $username = trim((string) ($body['username'] ?? ''));
                 $password = (string) ($body['password'] ?? '');
                 if ($repo->getAdminUsername() === null) {
                     Http::json(['ok' => false, 'error' => 'System not initialized. Import sql/committee_manager.sql or run php scripts/seed.php'], 503);
                 }
+                RateLimiter::check($ip, $username);
                 if (!Auth::loginAdmin($username, $password, $repo)) {
+                    RateLimiter::record($ip, $username);
                     Http::json(['ok' => false, 'error' => 'Invalid admin credentials'], 401);
                 }
+                RateLimiter::clear($ip);
                 Http::json([
                     'ok' => true,
                     'user' => ['role' => 'admin', 'memberId' => null, 'userId' => null],
@@ -84,10 +90,13 @@ try {
                 if ($email === '' || $password === '') {
                     Http::json(['ok' => false, 'error' => 'Email and password are required'], 400);
                 }
+                RateLimiter::check($ip, $email);
                 $pdo = \CommitteeManager\Database::connection();
                 if (!Auth::loginOwner($email, $password, $pdo)) {
+                    RateLimiter::record($ip, $email);
                     Http::json(['ok' => false, 'error' => 'Invalid email or password'], 401);
                 }
+                RateLimiter::clear($ip);
                 $user = Auth::user();
                 Http::json([
                     'ok' => true,
@@ -96,8 +105,8 @@ try {
             }
 
             if ($role === 'user') {
-                $name = trim((string) ($body['name'] ?? ''));
-                $pin = trim((string) ($body['pin'] ?? ''));
+                $name     = trim((string) ($body['name'] ?? ''));
+                $pin      = trim((string) ($body['pin'] ?? ''));
                 $memberId = (int) ($body['memberId'] ?? 0);
 
                 // Prefer private name+PIN login. memberId is accepted only as a legacy fallback
@@ -105,6 +114,7 @@ try {
                 if ($name !== '') {
                     $resolved = $repo->findActiveMemberIdByName($name);
                     if ($resolved === null) {
+                        RateLimiter::record($ip, $name);
                         Http::json(['ok' => false, 'error' => 'Name or PIN is incorrect'], 401);
                     }
                     $memberId = $resolved;
@@ -113,9 +123,12 @@ try {
                 if ($memberId <= 0 || $pin === '') {
                     Http::json(['ok' => false, 'error' => 'Name and PIN are required'], 400);
                 }
+                RateLimiter::check($ip, (string) $memberId);
                 if (!Auth::loginMember($memberId, $pin, $repo)) {
+                    RateLimiter::record($ip, (string) $memberId);
                     Http::json(['ok' => false, 'error' => 'Name or PIN is incorrect'], 401);
                 }
+                RateLimiter::clear($ip);
                 Http::json([
                     'ok' => true,
                     'user' => ['role' => 'user', 'memberId' => $memberId, 'userId' => null],
