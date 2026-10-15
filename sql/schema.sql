@@ -61,6 +61,7 @@ CREATE TABLE IF NOT EXISTS settings (
   next_id INT NOT NULL DEFAULT 1,
   updated_at BIGINT NOT NULL DEFAULT 0,
   committee_rules TEXT NULL DEFAULT NULL,
+  role_permissions TEXT NULL DEFAULT NULL,
   default_committee_id INT NULL DEFAULT NULL,
   CONSTRAINT settings_single_row CHECK (id = 1),
   CONSTRAINT fk_settings_default_committee

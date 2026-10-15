@@ -76,10 +76,22 @@ try {
                 $columns = [['key'=>'memberId','label'=>'Member ID'],['key'=>'memberName','label'=>'Member'],['key'=>'shares','label'=>'Shares'],['key'=>'month','label'=>'Month'],['key'=>'amountDue','label'=>'Amount Due'],['key'=>'amountPaid','label'=>'Amount Paid'],['key'=>'outstanding','label'=>'Outstanding'],['key'=>'status','label'=>'Status'],['key'=>'dueAt','label'=>'Due At']];
                 $presentedRows = $rows;
                 $summary = ['Records' => $report['totals']['records'] ?? 0, 'Outstanding' => $report['totals']['outstanding'] ?? ($report['totals']['pageOutstanding'] ?? 0)];
-            } else { // winner
+            } elseif ($type === 'winner') {
                 $columns = [['key'=>'winnerId','label'=>'Winner ID'],['key'=>'memberId','label'=>'Member ID'],['key'=>'name','label'=>'Winner'],['key'=>'month','label'=>'Month'],['key'=>'drawNumber','label'=>'Draw'],['key'=>'date','label'=>'Date'],['key'=>'sharesWon','label'=>'Shares Won'],['key'=>'amount','label'=>'Prize'],['key'=>'paymentStatus','label'=>'Payment Status'],['key'=>'status','label'=>'Status']];
                 $presentedRows = $rows;
                 $summary = ['Records' => $report['totals']['records'] ?? 0, 'Prize Amount' => $report['totals']['prizeAmount'] ?? 0, 'Shares Won' => $report['totals']['sharesWon'] ?? 0];
+            } elseif ($type === 'share-details') {
+                $columns = [['key'=>'memberId','label'=>'Member ID'],['key'=>'name','label'=>'Name'],['key'=>'totalShares','label'=>'Total Shares'],['key'=>'sharesWon','label'=>'Shares Won'],['key'=>'pendingShares','label'=>'Pending Shares'],['key'=>'amountWon','label'=>'Amount Won'],['key'=>'pendingAmount','label'=>'Pending Amount'],['key'=>'totalEntitlement','label'=>'Total Entitlement'],['key'=>'shareProgress','label'=>'Share Progress']];
+                $presentedRows = $rows;
+                $summary = ['Members' => $report['totals']['members'] ?? 0, 'Shares Won' => $report['totals']['sharesWon'] ?? 0, 'Amount Won' => $report['totals']['amountWon'] ?? 0];
+            } elseif ($type === 'monthly') {
+                $columns = [['key'=>'month','label'=>'Month'],['key'=>'membersPaid','label'=>'Members Paid'],['key'=>'membersTotal','label'=>'Members Total'],['key'=>'defaulters','label'=>'Defaulters'],['key'=>'collection','label'=>'Collection'],['key'=>'remaining','label'=>'Remaining'],['key'=>'collectionRate','label'=>'Rate']];
+                $presentedRows = $rows;
+                $summary = ['Total Collection' => $report['totals']['totalCollection'] ?? 0, 'Total Remaining' => $report['totals']['totalRemaining'] ?? 0, 'Records' => $report['totals']['records'] ?? 0];
+            } else { // defaulters, remaining — reuse pending columns
+                $columns = [['key'=>'memberId','label'=>'Member ID'],['key'=>'memberName','label'=>'Member'],['key'=>'shares','label'=>'Shares'],['key'=>'month','label'=>'Month'],['key'=>'amountDue','label'=>'Amount Due'],['key'=>'amountPaid','label'=>'Amount Paid'],['key'=>'outstanding','label'=>'Remaining'],['key'=>'status','label'=>'Status'],['key'=>'dueAt','label'=>'Due At']];
+                $presentedRows = $rows;
+                $summary = ['Records' => $report['totals']['records'] ?? 0, 'Outstanding' => $report['totals']['outstanding'] ?? 0];
             }
             $report['rows'] = $presentedRows;
             $report['columns'] = $columns;
@@ -120,9 +132,18 @@ try {
             if ($action === 'resetCommittee' || !empty($body['resetAll'])) Http::json(['ok' => true, 'data' => $enterprise->resetCommittee($committeeId, $user, isset($body['version']) ? (int) $body['version'] : null)]);
             if ($action === 'permanentDelete') Http::json(['ok' => true, 'data' => $enterprise->permanentDeleteMembers($committeeId, $body['memberIds'] ?? [], $user)]);
             if ($action === 'markNotificationRead') Http::json(['ok' => true, 'data' => $enterprise->markNotificationRead($committeeId, (int) ($body['notificationId'] ?? 0), $user)]);
+            if ($action === 'markAllNotificationsRead') Http::json(['ok' => true, 'data' => $enterprise->markAllNotificationsRead($committeeId, $user)]);
+            if ($action === 'deleteNotification') Http::json(['ok' => true, 'data' => $enterprise->deleteNotification($committeeId, (int) ($body['notificationId'] ?? 0), $user)]);
+            if ($action === 'clearNotifications') Http::json(['ok' => true, 'data' => $enterprise->clearNotifications($committeeId, $user)]);
             if ($action === 'logReportExport') Http::json(['ok' => true, 'data' => $enterprise->logReportExport($committeeId, $body, $user)]);
             if ($action === 'closeMonth') Http::json(['ok' => true, 'data' => $enterprise->setMonthClosure($committeeId, (int) ($body['month'] ?? 0), true, (string) ($body['notes'] ?? ''), $user)]);
             if ($action === 'reopenMonth') Http::json(['ok' => true, 'data' => $enterprise->setMonthClosure($committeeId, (int) ($body['month'] ?? 0), false, '', $user)]);
+            if ($action === 'saveRolePermissions') {
+                $perms = $body['permissions'] ?? [];
+                if (!is_array($perms)) Http::json(['ok' => false, 'error' => 'Invalid permissions'], 400);
+                $enterprise->saveRolePermissions($perms);
+                Http::json(['ok' => true]);
+            }
             Http::json(['ok' => true, 'data' => $enterprise->saveCommitteeData($committeeId, $body, $user)]);
         }
         if (!empty($body['resetAll'])) {

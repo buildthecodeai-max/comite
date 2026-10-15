@@ -186,7 +186,26 @@ final class MultiCommitteeRepository
             'notifications' => $notifications,
             'monthClosures' => $this->loadMonthClosures($committeeId),
             'viewMode' => ($user['role'] ?? '') === 'admin' ? 'admin' : 'member',
+            'rolePermissions' => $this->decodeRolePermissions($global['role_permissions'] ?? null),
         ];
+    }
+
+    private function decodeRolePermissions(?string $json): array
+    {
+        $allPages = ['portfolio','dashboard','received','remaining','sharewise','members','trash','payments','randomdraw','winners','reports','calendar','financials','audit','settings'];
+        $defaults = [
+            'owner'    => $allPages,
+            'app_user' => ['dashboard','received','remaining','payments','winners'],
+        ];
+        if (!$json) return $defaults;
+        $decoded = json_decode($json, true);
+        if (!is_array($decoded)) return $defaults;
+        foreach (['owner','app_user'] as $role) {
+            if (!isset($decoded[$role]) || !is_array($decoded[$role])) {
+                $decoded[$role] = $defaults[$role];
+            }
+        }
+        return $decoded;
     }
 
     /** @return array<int, array<string, mixed>> */
@@ -517,7 +536,7 @@ final class MultiCommitteeRepository
     private function loadGlobalSettings(): array
     {
         $stmt = $this->pdo->query(
-            'SELECT admin_user, admin_email, recovery_contact, recovery_note
+            'SELECT admin_user, admin_email, recovery_contact, recovery_note, role_permissions
              FROM settings WHERE id = 1 LIMIT 1'
         );
         $row = $stmt->fetch();
@@ -526,6 +545,13 @@ final class MultiCommitteeRepository
         }
 
         return $row;
+    }
+
+    public function saveRolePermissions(array $permissions): void
+    {
+        $json = json_encode($permissions, JSON_UNESCAPED_UNICODE);
+        $stmt = $this->pdo->prepare('UPDATE settings SET role_permissions = ? WHERE id = 1');
+        $stmt->execute([$json]);
     }
 
     /** @return array{0: array, 1: array} */
@@ -2132,6 +2158,52 @@ final class MultiCommitteeRepository
         return $this->loadNotifications($committeeId, $user);
     }
 
+    public function deleteNotification(int $committeeId, int $notificationId, array $user): array
+    {
+        $committeeId = $this->resolveCommitteeId($committeeId, $user);
+        $params = ['id' => $notificationId, 'committee_id' => $committeeId];
+        $scope = '';
+        if (($user['role'] ?? '') === 'user') {
+            $scope = ' AND member_id = :member_id';
+            $params['member_id'] = (int) ($user['memberId'] ?? 0);
+        }
+        $this->pdo->prepare(
+            "DELETE FROM notification_logs WHERE id = :id AND committee_id = :committee_id {$scope}"
+        )->execute($params);
+        return $this->loadNotifications($committeeId, $user);
+    }
+
+    public function markAllNotificationsRead(int $committeeId, array $user): array
+    {
+        $committeeId = $this->resolveCommitteeId($committeeId, $user);
+        $params = ['read_at' => $this->now(), 'committee_id' => $committeeId];
+        $scope = '';
+        if (($user['role'] ?? '') === 'user') {
+            $scope = ' AND (member_id IS NULL OR member_id = :member_id)';
+            $params['member_id'] = (int) ($user['memberId'] ?? 0);
+        }
+        $this->pdo->prepare(
+            "UPDATE notification_logs SET read_at = COALESCE(read_at, :read_at)
+             WHERE committee_id = :committee_id AND read_at IS NULL {$scope}"
+        )->execute($params);
+        return $this->loadNotifications($committeeId, $user);
+    }
+
+    public function clearNotifications(int $committeeId, array $user): array
+    {
+        $committeeId = $this->resolveCommitteeId($committeeId, $user);
+        $params = ['committee_id' => $committeeId];
+        $scope = '';
+        if (($user['role'] ?? '') === 'user') {
+            $scope = ' AND (member_id IS NULL OR member_id = :member_id)';
+            $params['member_id'] = (int) ($user['memberId'] ?? 0);
+        }
+        $this->pdo->prepare(
+            "DELETE FROM notification_logs WHERE committee_id = :committee_id {$scope}"
+        )->execute($params);
+        return [];
+    }
+
     public function logReportExport(
         int $committeeId,
         string $reportType,
@@ -2246,8 +2318,10 @@ final class MultiCommitteeRepository
                 $sort,
                 $type === 'collection'
             ),
-            'pending' => $this->pendingReport($committeeId, $memberScope, $page, $perPage, $search, $month, $sort),
+            'pending', 'defaulters', 'remaining' => $this->pendingReport($committeeId, $memberScope, $page, $perPage, $search, $month, $sort),
             'winner' => $this->winnerReport($committeeId, $memberScope, $page, $perPage, $search, $month, $status, $sort),
+            'share-details' => $this->shareDetailsReport($committeeId, $memberScope, $page, $perPage, $search, $sort),
+            'monthly' => $this->monthlyReport($committeeId, $memberScope, $month),
         };
 
         return [
@@ -2737,6 +2811,150 @@ final class MultiCommitteeRepository
         ]);
     }
 
+    private function shareDetailsReport(
+        int $committeeId,
+        ?int $memberScope,
+        int $page,
+        int $perPage,
+        string $search,
+        string $sort
+    ): array {
+        $where = ['m.committee_id = ?', 'm.deleted_at IS NULL'];
+        $params = [$committeeId];
+        if ($memberScope !== null) {
+            $where[] = 'm.id = ?';
+            $params[] = $memberScope;
+        }
+        if ($search !== '') {
+            $where[] = '(LOWER(m.name) LIKE ? OR CAST(m.id AS CHAR) LIKE ?)';
+            $params[] = '%' . strtolower($search) . '%';
+            $params[] = '%' . $search . '%';
+        }
+        $whereSql = implode(' AND ', $where);
+        $count = $this->pdo->prepare("SELECT COUNT(*) FROM members m WHERE {$whereSql}");
+        $count->execute($params);
+        $total = (int) $count->fetchColumn();
+        $sortSql = match ($sort) {
+            'name', 'name-asc' => 'm.name ASC, m.id ASC',
+            'name-desc' => 'm.name DESC, m.id DESC',
+            'shares', 'shares-desc' => 'shares_won DESC, m.id ASC',
+            'amount', 'amount-desc' => 'amount_won DESC, m.id ASC',
+            default => 'm.id ASC',
+        };
+        $offset = ($page - 1) * $perPage;
+        $stmt = $this->pdo->prepare(
+            "SELECT m.id, m.name, m.shares,
+                    COALESCE(w.shares_won, 0) AS shares_won,
+                    COALESCE(w.amount_won, 0) AS amount_won,
+                    COALESCE(cs.prize_per_share, 0) AS prize_per_share
+             FROM members m
+             LEFT JOIN (
+                 SELECT member_id, SUM(shares_won) AS shares_won, SUM(amount) AS amount_won
+                 FROM winners WHERE committee_id = ? AND deleted_at IS NULL AND status <> 'voided'
+                 GROUP BY member_id
+             ) w ON w.member_id = m.id
+             LEFT JOIN committee_settings cs ON cs.committee_id = m.committee_id
+             WHERE {$whereSql}
+             ORDER BY {$sortSql} LIMIT {$perPage} OFFSET {$offset}"
+        );
+        $stmt->execute(array_merge([$committeeId], $params));
+        $rows = array_map(function (array $row): array {
+            $totalShares = (int) $row['shares'];
+            $sharesWon = (int) $row['shares_won'];
+            $pendingShares = max(0, $totalShares - $sharesWon);
+            $prizePerShare = (float) $row['prize_per_share'];
+            $progress = $totalShares > 0 ? round($sharesWon / $totalShares * 100) : 0;
+            return [
+                'memberId' => (int) $row['id'],
+                'name' => (string) $row['name'],
+                'totalShares' => $totalShares,
+                'sharesWon' => $sharesWon,
+                'pendingShares' => $pendingShares,
+                'amountWon' => $this->number($row['amount_won']),
+                'pendingAmount' => $this->moneyValue($pendingShares * $prizePerShare),
+                'totalEntitlement' => $this->moneyValue($totalShares * $prizePerShare),
+                'shareProgress' => $progress . '%',
+            ];
+        }, $stmt->fetchAll());
+        $totStmt = $this->pdo->prepare(
+            "SELECT COUNT(*) AS members,
+                    COALESCE(SUM(COALESCE(w.shares_won, 0)), 0) AS total_won,
+                    COALESCE(SUM(COALESCE(w.amount_won, 0)), 0) AS total_amount
+             FROM members m
+             LEFT JOIN (
+                 SELECT member_id, SUM(shares_won) AS shares_won, SUM(amount) AS amount_won
+                 FROM winners WHERE committee_id = ? AND deleted_at IS NULL AND status <> 'voided'
+                 GROUP BY member_id
+             ) w ON w.member_id = m.id
+             WHERE {$whereSql}"
+        );
+        $totStmt->execute(array_merge([$committeeId], $params));
+        $sum = $totStmt->fetch() ?: ['members' => 0, 'total_won' => 0, 'total_amount' => 0];
+
+        return [
+            'rows' => $rows,
+            'totals' => [
+                'members' => (int) $sum['members'],
+                'sharesWon' => (int) $sum['total_won'],
+                'amountWon' => $this->number($sum['total_amount']),
+            ],
+            'pagination' => $this->pagination($page, $perPage, $total),
+        ];
+    }
+
+    private function monthlyReport(int $committeeId, ?int $memberScope, int $selectedMonth): array
+    {
+        $memberFilter = $memberScope !== null ? ' AND p.member_id = ?' : '';
+        $baseParams = [$committeeId];
+        if ($memberScope !== null) {
+            $baseParams[] = $memberScope;
+        }
+        $monthFilter = $selectedMonth > 0 ? ' AND p.month_num = ?' : '';
+        $params = $baseParams;
+        if ($selectedMonth > 0) {
+            $params[] = $selectedMonth;
+        }
+        $stmt = $this->pdo->prepare(
+            "SELECT p.month_num AS month,
+                    COUNT(DISTINCT CASE WHEN p.status IN ('paid','late') THEN p.member_id END) AS members_paid,
+                    COUNT(DISTINCT p.member_id) AS members_total,
+                    COALESCE(SUM(CASE WHEN p.status IN ('paid','late') THEN p.amount_paid ELSE 0 END), 0) AS collection,
+                    COALESCE(SUM(GREATEST(p.amount_due - COALESCE(p.amount_paid, 0), 0)), 0) AS remaining
+             FROM payments p
+             WHERE p.committee_id = ? {$memberFilter} {$monthFilter}
+             GROUP BY p.month_num
+             ORDER BY p.month_num ASC"
+        );
+        $stmt->execute($params);
+        $rows = array_map(function (array $row): array {
+            $paidCount = (int) $row['members_paid'];
+            $totalCount = max(1, (int) $row['members_total']);
+            $pct = round($paidCount / $totalCount * 100);
+            return [
+                'month' => (int) $row['month'],
+                'membersPaid' => $paidCount,
+                'membersTotal' => (int) $row['members_total'],
+                'defaulters' => (int) $row['members_total'] - $paidCount,
+                'collection' => $this->number($row['collection']),
+                'remaining' => $this->number($row['remaining']),
+                'collectionRate' => $pct . '%',
+            ];
+        }, $stmt->fetchAll());
+        $totalCollection = array_sum(array_column($rows, 'collection'));
+        $totalRemaining = array_sum(array_column($rows, 'remaining'));
+        $count = count($rows);
+
+        return [
+            'rows' => $rows,
+            'totals' => [
+                'records' => $count,
+                'totalCollection' => $this->number($totalCollection),
+                'totalRemaining' => $this->number($totalRemaining),
+            ],
+            'pagination' => $this->pagination(1, max(1, $count), $count),
+        ];
+    }
+
     private function reportType(string $type): string
     {
         $type = strtolower(trim($type));
@@ -2749,7 +2967,7 @@ final class MultiCommitteeRepository
             'collections' => 'collection',
         ];
         $type = $aliases[$type] ?? $type;
-        if (!in_array($type, ['committee-summary', 'payment', 'member', 'winner', 'collection', 'pending'], true)) {
+        if (!in_array($type, ['committee-summary', 'payment', 'member', 'winner', 'collection', 'pending', 'share-details', 'monthly', 'defaulters', 'remaining'], true)) {
             throw new InvalidArgumentException('Unsupported report type.', 422);
         }
 
