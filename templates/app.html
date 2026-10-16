@@ -610,8 +610,14 @@ td.act-cell,td .action-group{text-align:center;}
 .wh-kpi.a .wh-kpi-v{color:#D97706;}
 .wh-kpi.b .wh-kpi-v{color:var(--primary);}
 .wh-kpi.r .wh-kpi-v{color:#DC2626;}
-.wh-rank-list{display:flex;flex-direction:column;}
-.wh-rank-row{display:flex;align-items:center;gap:12px;padding:11px 8px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s;border-radius:8px;}
+.wh-rank-list{display:flex;flex-direction:column;gap:8px;}
+.wh-mon-group{border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.wh-mon-hdr{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--card);border-bottom:1px solid var(--border);border-left:4px solid var(--primary);}
+.wh-mon-hdr.nodraw{border-left-color:var(--border);}
+.wh-mon-lbl{font-size:13px;font-weight:800;color:var(--dark);flex:1;}
+.wh-mon-hdr.nodraw .wh-mon-lbl{color:var(--muted);font-weight:600;}
+.wh-mon-cnt{font-size:11px;font-weight:600;color:var(--muted);white-space:nowrap;}
+.wh-rank-row{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s;}
 .wh-rank-row:last-child{border-bottom:none;}
 .wh-rank-row:hover{background:var(--bg);}
 .wh-rank-row.empty{opacity:.45;cursor:default;}
@@ -620,13 +626,11 @@ td.act-cell,td .action-group{text-align:center;}
 .wh-rank-num.gold{color:#D97706;}
 .wh-rank-num.silver{color:#9ca3af;}
 .wh-rank-num.bronze{color:#b45309;}
-.wh-rank-mon{font-size:11px;font-weight:700;color:var(--primary);min-width:82px;white-space:nowrap;flex-shrink:0;}
-.wh-rank-mon.em{color:var(--muted);font-weight:500;}
 .wh-rank-av{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;flex-shrink:0;}
 .wh-rank-name{font-size:13px;font-weight:700;color:var(--dark);}
 .wh-rank-sub{font-size:10px;color:var(--muted);margin-top:1px;}
 .wh-rank-prize{font-size:14px;font-weight:900;color:#059669;font-variant-numeric:tabular-nums;}
-@media(max-width:640px){.wh-kpi-row{grid-template-columns:1fr 1fr;}.wh-rank-mon{min-width:60px;}}
+@media(max-width:640px){.wh-kpi-row{grid-template-columns:1fr 1fr;}}
 /* ── Member hover tooltip ── */
 #memTip{position:fixed;z-index:10000;pointer-events:none;opacity:0;transform:translateY(6px) scale(.97);transition:opacity .18s,transform .18s cubic-bezier(.32,.72,0,1);min-width:260px;max-width:320px;}
 #memTip.show{opacity:1;transform:translateY(0) scale(1);}
@@ -6902,12 +6906,14 @@ renderWinners=function(){
   const byPrize=[...filtList].sort((a,b)=>Number(b.amount||0)-Number(a.amount||0));
   const rankMap=new Map();
   byPrize.forEach((w,i)=>rankMap.set(w,i+1));
-  const rows=months.map(mon=>{
+  const groups=months.map(mon=>{
     const monthLbl=D.startMonth?monthNumLabel(mon):('Month '+mon);
     const filtEntries=filtByMon[mon]||[];
     const allEntries=allByMon[mon]||[];
     if(filtEntries.length){
-      return filtEntries.map(w=>{
+      const cnt=filtEntries.length;
+      const hdr=`<div class="wh-mon-hdr"><span class="wh-mon-lbl">${esc(monthLbl)}</span><span class="wh-mon-cnt">${cnt} winner${cnt>1?'s':''}</span></div>`;
+      const rowsHtml=filtEntries.map(w=>{
         const winIdx=enterpriseWinnerIndex(w);
         const draw=getWinnerDrawNumber(w);
         const sharesWon=w.sharesWon||1;
@@ -6920,15 +6926,20 @@ renderWinners=function(){
         const rank=rankMap.get(w)||0;
         const rankCls=rank===1?'gold':rank===2?'silver':rank===3?'bronze':'';
         const adminBtn=isAdmin()?`<button class="btn btn-outline btn-sm" style="padding:2px 8px;font-size:10px;flex-shrink:0" onclick="event.stopPropagation();removeWinnerByIndex(${winIdx})" title="Remove">&#x1F5D1;</button>`:'';
-        return `<div class="wh-rank-row" onclick="viewWinnerDetail(${winIdx})"><span class="wh-rank-num ${rankCls}">#${rank}</span><span class="wh-rank-mon">${esc(monthLbl)}</span><div class="wh-rank-av" style="background:${avColor}">${esc(initials)}</div><div style="flex:1;min-width:0"><div class="wh-rank-name">${esc(w.name||'')}</div><div class="wh-rank-sub">Draw #${draw} &middot; ${sharesWon} share${sharesWon>1?'s':''}</div></div><div style="text-align:right;flex-shrink:0"><div class="wh-rank-prize">${formatMoney(w.amount,activeCurrency())}</div></div><span class="wh-status-pill ${pillCls}">${esc(ps)}</span>${adminBtn}</div>`;
+        return `<div class="wh-rank-row" onclick="viewWinnerDetail(${winIdx})"><span class="wh-rank-num ${rankCls}">#${rank}</span><div class="wh-rank-av" style="background:${avColor}">${esc(initials)}</div><div style="flex:1;min-width:0"><div class="wh-rank-name">${esc(w.name||'')}</div><div class="wh-rank-sub">Draw #${draw} &middot; ${sharesWon} share${sharesWon>1?'s':''}</div></div><div style="text-align:right;flex-shrink:0"><div class="wh-rank-prize">${formatMoney(w.amount,activeCurrency())}</div></div><span class="wh-status-pill ${pillCls}">${esc(ps)}</span>${adminBtn}</div>`;
       }).join('');
+      return `<div class="wh-mon-group">${hdr}${rowsHtml}</div>`;
     }else if(allEntries.length){
-      return `<div class="wh-rank-row empty"><span class="wh-rank-num">—</span><span class="wh-rank-mon em">${esc(monthLbl)}</span><div class="wh-rank-av" style="background:var(--border)"></div><div style="flex:1;min-width:0"><div class="wh-rank-sub" style="font-style:italic">Winner exists — not in filter</div></div><span style="color:var(--muted);font-size:11px">—</span></div>`;
+      const hdr=`<div class="wh-mon-hdr nodraw"><span class="wh-mon-lbl">${esc(monthLbl)}</span><span class="wh-mon-cnt">Not in filter</span></div>`;
+      const row=`<div class="wh-rank-row empty"><span class="wh-rank-num">—</span><div class="wh-rank-av" style="background:var(--border)"></div><div style="flex:1;min-width:0"><div class="wh-rank-sub" style="font-style:italic">Winner exists — not in filter</div></div><span style="color:var(--muted);font-size:11px">—</span></div>`;
+      return `<div class="wh-mon-group">${hdr}${row}</div>`;
     }else{
-      return `<div class="wh-rank-row empty"><span class="wh-rank-num">—</span><span class="wh-rank-mon em">${esc(monthLbl)}</span><div class="wh-rank-av" style="background:transparent;border:1.5px dashed var(--border)"></div><div style="flex:1;min-width:0"><div class="wh-rank-sub" style="font-style:italic">No winner declared</div></div><span class="wh-status-pill wh-pill-n">No draw</span></div>`;
+      const hdr=`<div class="wh-mon-hdr nodraw"><span class="wh-mon-lbl">${esc(monthLbl)}</span><span class="wh-mon-cnt">No draw yet</span></div>`;
+      const row=`<div class="wh-rank-row empty"><span class="wh-rank-num">—</span><div class="wh-rank-av" style="background:transparent;border:1.5px dashed var(--border)"></div><div style="flex:1;min-width:0"><div class="wh-rank-sub" style="font-style:italic">No winner declared</div></div><span class="wh-status-pill wh-pill-n">No draw</span></div>`;
+      return `<div class="wh-mon-group">${hdr}${row}</div>`;
     }
   }).join('');
-  if(container)container.innerHTML=`<div class="wh-rank-list">${rows}</div>`;
+  if(container)container.innerHTML=`<div class="wh-rank-list">${groups}</div>`;
 };
 viewWinnerDetail=function(idx){
   const w=D.winners[idx];if(!w)return showToast('❌ Winner entry not found.');
