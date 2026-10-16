@@ -4669,6 +4669,59 @@ async function shareMemberWhatsApp(){
   window.open(waUrl,'_blank');
   showToast('✅ WhatsApp Share Ready — attach the downloaded image');
 }
+async function shareMemberProfileWhatsApp(id){
+  const m=D.members.find(x=>x.id===id);
+  if(!m) return;
+  if(typeof html2canvas!=='function'){ showToast('❌ Image library still loading — try again in a moment.'); return; }
+  const btn=document.querySelector('#memberViewBody .btn-wa');
+  if(btn){ btn.disabled=true; btn.innerHTML='Generating…'; }
+  try{
+    const src=document.getElementById('memberViewBody');
+    // Clone the profile without the action-button row
+    const clone=src.cloneNode(true);
+    const btnsRow=clone.querySelector('.mv-modal-btns');
+    if(btnsRow) btnsRow.remove();
+    // Render into an off-screen white container matching the panel width
+    const wrap=document.createElement('div');
+    const panelW=src.offsetWidth||360;
+    wrap.style.cssText='position:fixed;left:-9999px;top:0;width:'+panelW+'px;background:#ffffff;box-sizing:border-box;';
+    wrap.appendChild(clone);
+    document.body.appendChild(wrap);
+    let canvas;
+    try{
+      canvas=await html2canvas(wrap,{
+        scale:2,backgroundColor:'#ffffff',useCORS:true,logging:false,
+        width:panelW,height:wrap.scrollHeight,
+        windowWidth:panelW,windowHeight:wrap.scrollHeight
+      });
+    } finally { document.body.removeChild(wrap); }
+    const text=shareMemberSummaryText(m);
+    const blob=await new Promise(res=>canvas.toBlob(res,'image/png'));
+    if(blob&&navigator.canShare){
+      const file=new File([blob],`member-${m.id}-profile.png`,{type:'image/png'});
+      if(navigator.canShare({files:[file]})){
+        await navigator.share({files:[file],text});
+        showToast('✅ WhatsApp Share Ready');
+        return;
+      }
+    }
+    // Fallback: download image, then open WhatsApp
+    const a=document.createElement('a');
+    a.href=canvas.toDataURL('image/png');
+    a.download=`member-${m.id}-profile.png`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    const phone=String(m.phone||'').replace(/[^0-9]/g,'');
+    const waUrl=phone
+      ? `https://wa.me/${phone.startsWith('92')?phone:('92'+phone.replace(/^0/,''))}?text=${encodeURIComponent(text)}`
+      : `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(waUrl,'_blank');
+    showToast('✅ Profile downloaded — attach it in WhatsApp');
+  }catch(e){ showToast('❌ '+e.message); }
+  finally{
+    const b=document.querySelector('#memberViewBody .btn-wa');
+    if(b){ b.disabled=false; b.innerHTML=icon('whatsapp',16)+' Share to WhatsApp'; }
+  }
+}
 
 function buildWinnerShareCardHTML(w){
   const draw=getWinnerDrawNumber(w);
@@ -4821,7 +4874,7 @@ function openMemberView(id){
 
     <div class="mv-modal-btns">
       <button type="button" class="btn btn-outline btn-sm" onclick="closeMemberView()">Close</button>
-      <button type="button" class="btn btn-wa" onclick="openShareMember(${m.id})">${icon('whatsapp',16)} Share to WhatsApp</button>
+      <button type="button" class="btn btn-wa" onclick="shareMemberProfileWhatsApp(${m.id})">${icon('whatsapp',16)} Share to WhatsApp</button>
       ${admin?`<button type="button" class="btn btn-bl" onclick="closeMemberView();openEditModal(${m.id})">${icon('pencil',16)} Edit Member</button>`:''}
     </div>
   `;
