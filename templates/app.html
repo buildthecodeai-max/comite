@@ -1780,7 +1780,7 @@ td.act-cell,td .action-group{text-align:center;}
       </div><!-- /addMemberFormBody -->
     </div>
     <div class="card"><h2 style="display:flex;align-items:center;gap:7px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg> Members <span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:4px">— click any cell to edit inline</span></h2>
-      <input id="memberSearch" class="search-bar" placeholder="Search by name or ID…" oninput="renderMembers(this.value)">
+      <input id="memberSearch" class="search-bar" placeholder="Search by name or ID…" oninput="memberPage=1;renderMembers(this.value);saveWorkspaceState()">
       <div class="member-tools" id="memberTools">
         <div class="left">
           <span class="member-count" id="memberCount">0 members</span>
@@ -1808,7 +1808,7 @@ td.act-cell,td .action-group{text-align:center;}
     <div class="card">
       <h2>🗑️ Trash — Deleted Members</h2>
       <p style="font-size:12px;color:var(--muted);margin-bottom:14px">Members moved here can be restored or permanently deleted.</p>
-      <input id="trashSearch" class="search-bar" placeholder="🔍 Search trash by name or ID…" oninput="renderTrash(this.value)">
+      <input id="trashSearch" class="search-bar" placeholder="🔍 Search trash by name or ID…" oninput="trashPage=1;renderTrash(this.value);saveWorkspaceState()">
       <div class="tbl-wrap"><table>
         <thead><tr><th>ID</th><th>Name</th><th>Phone</th><th>Shares</th><th>Deleted Date</th><th>Deleted By</th><th>Actions</th></tr></thead>
         <tbody id="trashBody"></tbody>
@@ -1843,13 +1843,13 @@ td.act-cell,td .action-group{text-align:center;}
         <div class="fg"><label>Month</label>
           <select id="pgMon" onchange="pgPage=1;setActiveMonth(parseInt(this.value)||0)"></select></div>
         <div class="fg"><label>Status</label>
-          <select id="pgSt" onchange="pgPage=1;renderPayGrid()">
+          <select id="pgSt" onchange="pgPage=1;renderPayGrid();saveWorkspaceState()">
             <option value="all">All</option><option value="paid">Paid</option><option value="unpaid">Unpaid</option>
           </select></div>
         <div class="fg"><label>Search</label>
-          <input id="pgSearch" placeholder="Search…" oninput="pgPage=1;renderPayGrid()"></div>
+          <input id="pgSearch" placeholder="Search…" oninput="pgPage=1;renderPayGrid();saveWorkspaceState()"></div>
         <div class="fg"><label>Rows</label>
-          <select id="pgPerPage" onchange="pgPage=1;renderPayGrid()">
+          <select id="pgPerPage" onchange="pgPage=1;renderPayGrid();saveWorkspaceState()">
             <option value="25">25</option><option value="50">50</option><option value="100">100</option><option value="0">All</option>
           </select></div>
         <div class="fg"><label>Sort</label>
@@ -1938,13 +1938,13 @@ td.act-cell,td .action-group{text-align:center;}
       <!-- TAB 3: History -->
       <div class="wt-tab-panel" id="wt-panel-history">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
-          <input id="whSearch" class="wh-search-in" placeholder="Search winner…" oninput="renderWinners()">
+          <input id="whSearch" class="wh-search-in" placeholder="Search winner…" oninput="renderWinners();saveWorkspaceState()">
           <div class="wh-fp-wrap">
             <button class="wh-fp active" data-whs="all" onclick="whSetFilter(this,'all')">All</button>
             <button class="wh-fp" data-whs="paid" onclick="whSetFilter(this,'paid')">✅ Paid</button>
             <button class="wh-fp" data-whs="pending" onclick="whSetFilter(this,'pending')">⏳ Pending</button>
           </div>
-          <select id="whSort" class="wh-sort-sel" onchange="renderWinners()">
+          <select id="whSort" class="wh-sort-sel" onchange="renderWinners();saveWorkspaceState()">
             <option value="month">Month ↑</option>
             <option value="month-desc">Month ↓</option>
             <option value="name">Name A–Z</option>
@@ -2109,9 +2109,9 @@ td.act-cell,td .action-group{text-align:center;}
     <div class="page-intro"><h2>Audit Log</h2><p>A permanent record of committee activity and administrative changes.</p></div>
     <div class="card">
       <div class="audit-toolbar">
-        <div class="fg"><label for="auditSearch">Search</label><input id="auditSearch" placeholder="User, action, or detail…" oninput="auditPage=1;renderAuditLog()"></div>
-        <div class="fg"><label for="auditAction">Action</label><select id="auditAction" onchange="auditPage=1;renderAuditLog()"><option value="">All Actions</option></select></div>
-        <div class="fg"><label for="auditDate">Date</label><input id="auditDate" type="date" onchange="auditPage=1;renderAuditLog()"></div>
+        <div class="fg"><label for="auditSearch">Search</label><input id="auditSearch" placeholder="User, action, or detail…" oninput="auditPage=1;renderAuditLog();saveWorkspaceState()"></div>
+        <div class="fg"><label for="auditAction">Action</label><select id="auditAction" onchange="auditPage=1;renderAuditLog();saveWorkspaceState()"><option value="">All Actions</option></select></div>
+        <div class="fg"><label for="auditDate">Date</label><input id="auditDate" type="date" onchange="auditPage=1;renderAuditLog();saveWorkspaceState()"></div>
       </div>
       <div id="auditResults" class="tbl-wrap"></div>
       <div id="auditPagination" class="pagination-bar"></div>
@@ -3592,6 +3592,7 @@ function launchApp(){
   const defaultLanding=effectiveAllowed.length?effectiveAllowed[0]:'dashboard';
   const landing=isAdmin()&&effectiveAllowed.includes(savedPage)?savedPage:(isAdmin()?defaultLanding:'myaccount');
   const tab=document.querySelector(`.nav-btn[onclick*="'${landing}'"]`);
+  restoreWorkspaceInputs(saved);
   showPage(landing,tab);
 }
 function showAdminForgotPassword(){
@@ -3806,10 +3807,53 @@ function saveWorkspaceState(page){
       committeeId:Number(activeCommitteeId||D.committeeId||0)||0,
       month:Number(activeMonth)||0,
       page:page||current.page||activePageName(),
-      savedAt:Date.now()
+      savedAt:Date.now(),
+      memberSearch:document.getElementById('memberSearch')?.value||'',
+      memberPage,
+      trashSearch:document.getElementById('trashSearch')?.value||'',
+      trashPage,
+      pgSearch:document.getElementById('pgSearch')?.value||'',
+      pgStatus:document.getElementById('pgSt')?.value||'',
+      pgPerPage:document.getElementById('pgPerPage')?.value||'',
+      pgPage,
+      auditSearch:document.getElementById('auditSearch')?.value||'',
+      auditAction:document.getElementById('auditAction')?.value||'',
+      auditDate:document.getElementById('auditDate')?.value||'',
+      auditPage,
+      whFilter:_whStatusF||'all',
+      whSort:document.getElementById('whSort')?.value||'month',
+      whSearch:document.getElementById('whSearch')?.value||'',
+      winnerTab:_winnerActiveTab||'draw',
     };
     localStorage.setItem(VIEW_STATE_KEY,JSON.stringify(next));
   }catch(e){}
+}
+function restoreWorkspaceInputs(saved){
+  if(!saved||typeof saved!=='object') return;
+  // Restore JS pagination state
+  memberPage=Math.max(1,parseInt(saved.memberPage,10)||1);
+  trashPage=Math.max(1,parseInt(saved.trashPage,10)||1);
+  pgPage=Math.max(1,parseInt(saved.pgPage,10)||1);
+  auditPage=Math.max(1,parseInt(saved.auditPage,10)||1);
+  // Restore JS filter state
+  if(saved.whFilter) _whStatusF=saved.whFilter;
+  if(saved.winnerTab) _winnerActiveTab=saved.winnerTab;
+  // Restore DOM input values
+  const setV=(id,v)=>{if(v==null||v==='') return; const el=document.getElementById(id); if(el) el.value=v;};
+  setV('memberSearch',saved.memberSearch);
+  setV('trashSearch',saved.trashSearch);
+  setV('pgSearch',saved.pgSearch);
+  setV('pgSt',saved.pgStatus);
+  setV('pgPerPage',saved.pgPerPage);
+  setV('auditSearch',saved.auditSearch);
+  setV('auditAction',saved.auditAction);
+  setV('auditDate',saved.auditDate);
+  setV('whSort',saved.whSort);
+  setV('whSearch',saved.whSearch);
+  // Sync winner history filter pill active states
+  if(saved.whFilter){
+    document.querySelectorAll('.wh-fp').forEach(b=>b.classList.toggle('active',b.dataset.whs===saved.whFilter));
+  }
 }
 function getActiveMonth(){ return activeMonth; }
 function clampMonth(mo){
@@ -4320,7 +4364,7 @@ function addMembersBulk(){
   showToast(`✅ ${valid.length} member${valid.length===1?'':'s'} added!`);
   save({quiet:true}).catch(()=>{});
 }
-function goMemberPage(p){ memberPage=p; renderMembers(memberFilterValue()); }
+function goMemberPage(p){ memberPage=p; renderMembers(memberFilterValue()); saveWorkspaceState(); }
 function renderMembers(filter=''){
   const admin=isAdmin();
   document.getElementById('addMemberCard').style.display=admin?'':'none';
@@ -4843,7 +4887,7 @@ async function removeMembersByIds(ids){
   save({quiet:true}).catch(()=>{});
 }
 
-function goTrashPage(p){ trashPage=p; renderTrash(trashFilterValue()); }
+function goTrashPage(p){ trashPage=p; renderTrash(trashFilterValue()); saveWorkspaceState(); }
 function trashFilterValue(){
   const el=document.getElementById('trashSearch');
   return el?el.value.trim():'';
@@ -4972,7 +5016,7 @@ function pgToggleVisible(checked){
   renderPayGrid();
 }
 
-function goPgPage(p){ pgPage=p; renderPayGrid(); }
+function goPgPage(p){ pgPage=p; renderPayGrid(); saveWorkspaceState(); }
 
 function pgBulkMark(paid){
   if(!isAdmin()) return;
@@ -5401,6 +5445,7 @@ function whSetFilter(btn,f){
   _whStatusF=f;
   document.querySelectorAll('.wh-fp').forEach(b=>b.classList.toggle('active',b.dataset.whs===f));
   renderWinners();
+  saveWorkspaceState();
 }
 function winHistFilteredList(){
   const q=(document.getElementById('whSearch')?.value||'').trim().toLowerCase();
@@ -7706,7 +7751,7 @@ function renderAuditLog(){
   mount.innerHTML=`<table><thead><tr><th>User</th><th>Date</th><th>Time</th><th>Action</th><th>IP</th></tr></thead><tbody>${state.items.map(a=>{const d=auditDate(a);return `<tr><td>${esc(pick(a,['user','admin','actor'],'Admin'))}</td><td>${d?esc(d.toLocaleDateString('en-PK')):'—'}</td><td>${d?esc(d.toLocaleTimeString('en-PK',{hour:'2-digit',minute:'2-digit'})):'—'}</td><td><div class="audit-action">${esc(pick(a,['action'],'Activity'))}</div><div class="audit-detail">${esc(pick(a,['detail','newValue','description'],'')||'—')}</div></td><td>${esc(pick(a,['ip'],'—'))}</td></tr>`;}).join('')}</tbody></table>`;
   renderPagination('auditPagination',state,'goAuditPage');
 }
-function goAuditPage(page){auditPage=page;renderAuditLog();}
+function goAuditPage(page){auditPage=page;renderAuditLog();saveWorkspaceState();}
 
 /* Reports with server-first, client fallback behavior */
 function reportCurrency(){return activeCurrency();}
