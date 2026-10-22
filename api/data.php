@@ -97,7 +97,7 @@ try {
                 $presentedRows = $rows;
                 $summary = ['Members' => $report['totals']['members'] ?? 0, 'Shares Won' => $report['totals']['sharesWon'] ?? 0, 'Amount Won' => $report['totals']['amountWon'] ?? 0];
             } elseif ($type === 'monthly') {
-                $columns = [['key'=>'month','label'=>'Month'],['key'=>'membersPaid','label'=>'Members Paid'],['key'=>'membersTotal','label'=>'Members Total'],['key'=>'defaulters','label'=>'Defaulters'],['key'=>'collection','label'=>'Collection'],['key'=>'remaining','label'=>'Remaining'],['key'=>'collectionRate','label'=>'Rate']];
+                $columns = [['key'=>'month','label'=>'Month'],['key'=>'membersPaid','label'=>'Members Paid'],['key'=>'defaulters','label'=>'Defaulters'],['key'=>'collection','label'=>'Collection'],['key'=>'remaining','label'=>'Remaining'],['key'=>'collectionRate','label'=>'Rate'],['key'=>'winners','label'=>'Winners']];
                 $presentedRows = $rows;
                 $summary = ['Total Collection' => $report['totals']['totalCollection'] ?? 0, 'Total Remaining' => $report['totals']['totalRemaining'] ?? 0, 'Records' => $report['totals']['records'] ?? 0];
             } else { // defaulters, remaining — reuse pending columns

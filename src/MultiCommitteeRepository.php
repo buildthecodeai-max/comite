@@ -2926,18 +2926,33 @@ final class MultiCommitteeRepository
              ORDER BY p.month_num ASC"
         );
         $stmt->execute($params);
-        $rows = array_map(function (array $row): array {
+
+        // Winner counts per month (separate query for simplicity)
+        $wStmt = $this->pdo->prepare(
+            "SELECT month_num, COUNT(*) AS cnt
+             FROM winners
+             WHERE committee_id = ? AND deleted_at IS NULL AND status <> 'voided'
+             GROUP BY month_num"
+        );
+        $wStmt->execute([$committeeId]);
+        $winnersByMonth = [];
+        foreach ($wStmt->fetchAll() as $wr) {
+            $winnersByMonth[(int) $wr['month_num']] = (int) $wr['cnt'];
+        }
+
+        $rows = array_map(function (array $row) use ($winnersByMonth): array {
             $paidCount = (int) $row['members_paid'];
             $totalCount = max(1, (int) $row['members_total']);
             $pct = round($paidCount / $totalCount * 100);
+            $mon = (int) $row['month'];
             return [
-                'month' => (int) $row['month'],
+                'month' => $mon,
                 'membersPaid' => $paidCount,
-                'membersTotal' => (int) $row['members_total'],
                 'defaulters' => (int) $row['members_total'] - $paidCount,
                 'collection' => $this->number($row['collection']),
                 'remaining' => $this->number($row['remaining']),
                 'collectionRate' => $pct . '%',
+                'winners' => $winnersByMonth[$mon] ?? 0,
             ];
         }, $stmt->fetchAll());
         $totalCollection = array_sum(array_column($rows, 'collection'));
