@@ -1944,6 +1944,9 @@ td.act-cell,td .action-group{text-align:center;}
             <button class="wh-fp" data-whs="paid" onclick="whSetFilter(this,'paid')">✅ Paid</button>
             <button class="wh-fp" data-whs="pending" onclick="whSetFilter(this,'pending')">⏳ Pending</button>
           </div>
+          <select id="whMon" class="wh-sort-sel" onchange="renderWinners();saveWorkspaceState()">
+            <option value="0">All Months</option>
+          </select>
           <select id="whSort" class="wh-sort-sel" onchange="renderWinners();saveWorkspaceState()">
             <option value="month">Month ↑</option>
             <option value="month-desc">Month ↓</option>
@@ -3823,6 +3826,7 @@ function saveWorkspaceState(page){
       whFilter:_whStatusF||'all',
       whSort:document.getElementById('whSort')?.value||'month',
       whSearch:document.getElementById('whSearch')?.value||'',
+      whMon:parseInt(document.getElementById('whMon')?.value,10)||0,
       winnerTab:_winnerActiveTab||'draw',
     };
     localStorage.setItem(VIEW_STATE_KEY,JSON.stringify(next));
@@ -3850,6 +3854,7 @@ function restoreWorkspaceInputs(saved){
   setV('auditDate',saved.auditDate);
   setV('whSort',saved.whSort);
   setV('whSearch',saved.whSearch);
+  if(saved.whMon) setV('whMon',String(saved.whMon));
   // Sync winner history filter pill active states
   if(saved.whFilter){
     document.querySelectorAll('.wh-fp').forEach(b=>b.classList.toggle('active',b.dataset.whs===saved.whFilter));
@@ -3887,16 +3892,6 @@ function syncMonthSelects(){
     const el=document.getElementById(id);
     if(el&&el.value!==String(activeMonth)) el.value=String(activeMonth);
   });
-  const wh=document.getElementById('whMon');
-  if(wh){
-    const want=String(activeMonth);
-    if(activeMonth>0&&![...wh.options].some(o=>o.value===want)){
-      const opt=document.createElement('option');
-      opt.value=want; opt.textContent=D.startMonth?monthNumLabel(activeMonth):('Month '+activeMonth);
-      wh.appendChild(opt);
-    }
-    if(wh.value!==want) wh.value=want;
-  }
 }
 /* THE single entry point for changing the month. Updates state + URL and
    refreshes every affected widget via AJAX-style re-render (no page reload). */
@@ -6960,7 +6955,9 @@ function enterpriseWinnerFilteredList(){
 winHistFilteredList=function(){
   const q=(document.getElementById('whSearch')?.value||'').trim().toLowerCase();
   const sort=document.getElementById('whSort')?.value||'month';
+  const monF=parseInt(document.getElementById('whMon')?.value,10)||0;
   let list=D.winners.slice().filter(w=>!w.archivedAt&&!w.deletedAt);
+  if(monF) list=list.filter(w=>Number(w.month)===monF);
   if(q) list=list.filter(w=>String(w.name||'').toLowerCase().includes(q));
   if(_whStatusF&&_whStatusF!=='all'){
     list=list.filter(w=>{
@@ -6984,13 +6981,24 @@ renderWinners=function(){
   const kpiEl=document.getElementById('whKpi');
   const total=D.totalMonths||0;
   if(!total){if(container)container.innerHTML='<p style="color:var(--muted);padding:12px 0">No months configured.</p>';return;}
+  // Populate month select options once (first render)
+  const whMonEl=document.getElementById('whMon');
+  if(whMonEl&&whMonEl.options.length<=1&&total>0){
+    for(let i=1;i<=total;i++){
+      const opt=document.createElement('option');
+      opt.value=String(i);
+      opt.textContent=D.startMonth?monthNumLabel(i):('Month '+i);
+      whMonEl.appendChild(opt);
+    }
+  }
+  const selMon=parseInt(document.getElementById('whMon')?.value,10)||0;
   const filtList=winHistFilteredList();
   const allByMon={};
   D.winners.filter(w=>!w.archivedAt&&!w.deletedAt).forEach(w=>{if(!allByMon[w.month])allByMon[w.month]=[];allByMon[w.month].push(w);});
   const filtByMon={};
   filtList.forEach(w=>{if(!filtByMon[w.month])filtByMon[w.month]=[];filtByMon[w.month].push(w);});
   const sort=document.getElementById('whSort')?.value||'month';
-  const months=Array.from({length:total},(_,i)=>i+1);
+  const months=selMon?[selMon]:Array.from({length:total},(_,i)=>i+1);
   if(sort==='month-desc')months.reverse();
   const wonCount=Object.keys(filtByMon).length;
   const totalPrize=filtList.reduce((s,w)=>s+Number(w.amount||0),0);
