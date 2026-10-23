@@ -967,6 +967,56 @@ td.act-cell,td .action-group{text-align:center;}
 /* keep legacy alias */
 .report-status-pill{display:inline-flex;align-items:center;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;}
 .report-status-pill.paid{background:rgba(16,185,129,.1);color:#059669;}.report-status-pill.pending,.report-status-pill.partial{background:rgba(245,158,11,.1);color:#B45309;}.report-status-pill.late,.report-status-pill.voided{background:rgba(239,68,68,.1);color:#DC2626;}.report-status-pill.active{background:rgba(16,185,129,.1);color:#059669;}.report-status-pill.deleted{background:rgba(107,114,128,.1);color:#6B7280;}
+/* === REPORT OVERVIEW DASHBOARD === */
+.rpt-ov-wrap{padding:14px;display:flex;flex-direction:column;gap:12px;}
+.rpt-ov-kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+@media(max-width:700px){.rpt-ov-kpi-row{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:400px){.rpt-ov-kpi-row{grid-template-columns:1fr;}}
+.rpt-ov-kpi{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:13px 14px;}
+.rpt-ov-kpi-icon{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;margin-bottom:8px;}
+.rpt-ov-kpi-lbl{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:3px;}
+.rpt-ov-kpi-val{font-size:17px;font-weight:900;color:var(--dark);font-variant-numeric:tabular-nums;line-height:1.1;}
+.rpt-ov-kpi-sub{font-size:10px;color:var(--muted);margin-top:4px;}
+.rpt-ov-charts{display:grid;grid-template-columns:1fr 270px;gap:10px;}
+@media(max-width:700px){.rpt-ov-charts{grid-template-columns:1fr;}}
+.rpt-ov-chart-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;}
+.rpt-ov-chart-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:6px;}
+.rpt-ov-chart-title{font-size:12px;font-weight:700;color:var(--dark);}
+.rpt-ov-chart-legend{display:flex;gap:10px;}
+.rpt-ov-chart-legend span{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted);}
+.rpt-ov-dot{display:inline-block;width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.rpt-ov-chart-body svg{width:100%;height:auto;display:block;}
+.rpt-ov-donut-wrap{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.rpt-ov-donut-legend{flex:1;min-width:90px;display:flex;flex-direction:column;gap:7px;}
+.rpt-ov-donut-lbl{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted);}
+.rpt-ov-donut-lbl span{flex:1;}
+.rpt-ov-donut-lbl strong{color:var(--dark);font-variant-numeric:tabular-nums;font-size:10px;white-space:nowrap;}
+.rpt-ov-bottom{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+@media(max-width:700px){.rpt-ov-bottom{grid-template-columns:1fr;}}
+.rpt-ov-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;}
+.rpt-ov-card-hdr{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:8px;}
+.rpt-ov-qr-list{display:flex;flex-direction:column;gap:5px;}
+.rpt-ov-qr-item{display:flex;align-items:center;gap:9px;padding:7px 9px;border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:.12s;}
+.rpt-ov-qr-item:hover{border-color:var(--primary);background:rgba(79,70,229,.04);}
+.rpt-ov-qr-icon{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.rpt-ov-qr-icon svg{stroke:#fff!important;fill:none;}
+.rpt-ov-qr-text{flex:1;min-width:0;}
+.rpt-ov-qr-name{font-size:11px;font-weight:700;color:var(--dark);}
+.rpt-ov-qr-desc{font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rpt-ov-qr-arrow{color:var(--muted);flex-shrink:0;}
+.rpt-ov-perf-item{margin-bottom:9px;}
+.rpt-ov-perf-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
+.rpt-ov-perf-lbl{font-size:11px;color:var(--dark);}
+.rpt-ov-perf-pct{font-size:11px;font-weight:700;color:var(--dark);}
+.rpt-ov-perf-bar{height:5px;background:var(--border);border-radius:99px;overflow:hidden;}
+.rpt-ov-perf-fill{height:100%;border-radius:99px;}
+.rpt-ov-mini-tbl-wrap{overflow-x:auto;margin-top:4px;}
+.rpt-ov-mini-tbl{width:100%;border-collapse:collapse;font-size:11px;}
+.rpt-ov-mini-tbl th{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);padding:4px 6px;text-align:left;border-bottom:1px solid var(--border);}
+.rpt-ov-mini-tbl th.r{text-align:right;}
+.rpt-ov-mini-tbl td{padding:5px 6px;color:var(--dark);border-bottom:1px solid var(--border);white-space:nowrap;}
+.rpt-ov-mini-tbl td.r{text-align:right;font-variant-numeric:tabular-nums;}
+.rpt-ov-mini-tbl tr:last-child td{border-bottom:none;}
 .report-money{font-variant-numeric:tabular-nums;font-weight:700;}
 /* skeleton rows for loading */
 .rpt-skeleton-row{display:flex;gap:12px;padding:10px 12px;border-bottom:1px solid var(--border);}
@@ -2013,6 +2063,7 @@ td.act-cell,td .action-group{text-align:center;}
 
     <!-- Hidden select for JS compatibility -->
     <select id="reportType" style="display:none" onchange="syncReportFilterOptions();reportPage=1;loadReport();renderReportTypeCards()">
+      <option value="overview">Overview</option>
       <option value="monthly">Monthly Overview</option>
       <option value="defaulters">Defaulters</option>
       <option value="winner-history">Winner History</option>
@@ -7915,6 +7966,7 @@ function filterLocalReport(report,search,sort){
   let rows=report.rows.slice();if(search)rows=rows.filter(r=>r.some(v=>String(v).toLowerCase().includes(search.toLowerCase())));const headers=report.columns.map(c=>String(c).toLowerCase());let index=sort==='name'?headers.findIndex(h=>h.includes('name')||h.includes('member')):sort==='amount-desc'?headers.findIndex(h=>h.includes('amount')||h.includes('prize')||h.includes('collection')):0;if(index<0)index=0;rows.sort((a,b)=>sort==='amount-desc'?Number(b[index]||0)-Number(a[index]||0):String(a[index]??'').localeCompare(String(b[index]??''),undefined,{numeric:true}));return Object.assign({},report,{rows});
 }
 const _RPT_ICONS={
+  'overview':'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="8" height="8" rx="1"/><rect x="14" y="3" width="8" height="8" rx="1"/><rect x="2" y="13" width="8" height="8" rx="1"/><rect x="14" y="13" width="8" height="8" rx="1"/></svg>',
   'share-details':'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="18" y="3" width="4" height="18" rx="1"/><rect x="10" y="8" width="4" height="13" rx="1"/><rect x="2" y="13" width="4" height="8" rx="1"/></svg>',
   'monthly':'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
   'committee-summary':'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 10v11M16 10v11M12 10v11"/></svg>',
@@ -7932,6 +7984,7 @@ const _RPT_ICONS={
   'member-statement':'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>',
 };
 const _RPT_TYPES=[
+  {value:'overview',label:'Overview',desc:'Dashboard: KPIs, charts & committee performance'},
   {value:'monthly',label:'Monthly',desc:'Month-by-month collection overview'},
   {value:'defaulters',label:'Defaulters',desc:'Members with outstanding balances'},
   {value:'winner-history',label:'Winner History',desc:'Member-wise win history & prizes'},
@@ -7945,6 +7998,7 @@ function setReportType(value){
   if(sel){sel.value=value;syncReportFilterOptions();reportPage=1;loadReport();renderReportTypeCards();}
 }
 const _RPT_DOT_COLORS={
+  'overview':'#4F46E5',
   'share-details':'#4F46E5','monthly':'#0891B2','committee-summary':'#7C3AED',
   'payment':'#059669','member':'#2563EB','winner':'#D97706',
   'collection':'#10B981','pending':'#DC2626','defaulters':'#EF4444','remaining':'#64748B',
@@ -7964,6 +8018,7 @@ function renderReportTypeCards(){
   }).join('');
 }
 const _RPT_ICON_THEMES={
+  'overview':{bg:'linear-gradient(135deg,#4F46E5,#818CF8)',sh:'rgba(79,70,229,.28)'},
   'share-details':{bg:'linear-gradient(135deg,#4F46E5,#818CF8)',sh:'rgba(79,70,229,.28)'},
   'monthly':{bg:'linear-gradient(135deg,#0891B2,#38BDF8)',sh:'rgba(8,145,178,.28)'},
   'committee-summary':{bg:'linear-gradient(135deg,#7C3AED,#A78BFA)',sh:'rgba(124,58,237,.28)'},
@@ -7981,6 +8036,7 @@ const _RPT_ICON_THEMES={
   'member-statement':{bg:'linear-gradient(135deg,#065F46,#059669)',sh:'rgba(5,150,105,.28)'},
 };
 const _RPT_HEADER_ICONS={
+  'overview':'<svg viewBox="0 0 24 24"><rect x="2" y="3" width="8" height="8" rx="1"/><rect x="14" y="3" width="8" height="8" rx="1"/><rect x="2" y="13" width="8" height="8" rx="1"/><rect x="14" y="13" width="8" height="8" rx="1"/></svg>',
   'share-details':'<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>',
   'monthly':'<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
   'committee-summary':'<svg viewBox="0 0 24 24"><rect x="18" y="3" width="4" height="18" rx="1"/><rect x="10" y="8" width="4" height="13" rx="1"/><rect x="2" y="13" width="4" height="8" rx="1"/></svg>',
@@ -7998,6 +8054,7 @@ const _RPT_HEADER_ICONS={
   'member-statement':'<svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>',
 };
 const _RPT_HERO_GRADIENTS={
+  'overview':'linear-gradient(135deg,#3730A3 0%,#4F46E5 50%,#6366F1 100%)',
   'share-details':'linear-gradient(135deg,#3730A3 0%,#4F46E5 50%,#6366F1 100%)',
   'monthly':'linear-gradient(135deg,#0369A1 0%,#0891B2 50%,#38BDF8 100%)',
   'committee-summary':'linear-gradient(135deg,#5B21B6 0%,#7C3AED 50%,#A78BFA 100%)',
@@ -8017,6 +8074,9 @@ const _RPT_HERO_GRADIENTS={
 function updateReportHero(){
   const type=document.getElementById('reportType')?.value||'monthly';
   const def=_RPT_TYPES.find(t=>t.value===type)||_RPT_TYPES[0];
+  /* hide row/page stats for overview */
+  const heroRight=document.getElementById('rptHeroStats');
+  if(heroRight)heroRight.style.display=type==='overview'?'none':'';
   const el=(id,txt)=>{const e=document.getElementById(id);if(e)e.textContent=txt;};
   el('rptHeroTitle',def.label);
   el('rptHeroSubtitle',def.desc);
@@ -8056,8 +8116,118 @@ function resetReportFilters(){
   const r=document.getElementById('reportRows');if(r)r.value='25';
   reportPage=1;loadReport();
 }
+function renderReportOverview(){
+  const mount=document.getElementById('reportResults');if(!mount)return;
+  const sumEl=document.getElementById('reportSummary');const pager=document.getElementById('reportPagination');const resultCount=document.getElementById('reportResultCount');
+  if(sumEl)sumEl.innerHTML='';if(pager)pager.innerHTML='';if(resultCount)resultCount.textContent='';
+  const title=document.getElementById('reportResultsTitle');if(title)title.textContent='Reports Overview';
+  const cur=reportCurrency();
+  /* KPI data */
+  const totalMonths=Number(D.totalMonths)||1;
+  const months=Array.from({length:totalMonths},(_,i)=>i+1);
+  let totalReceived=0,totalPending=0,pctSum=0;
+  months.forEach(i=>{const s=monthCollectionStats(i);totalReceived+=s.received;totalPending+=s.pending;pctSum+=s.pct;});
+  const avgRate=months.length?Math.round(pctSum/months.length):0;
+  const wins=(D.winners||[]).filter(w=>!w.archivedAt&&!w.deletedAt);
+  const paidPayouts=wins.filter(w=>String(w.paymentStatus)==='paid').reduce((n,w)=>n+Number(w.amount||0),0);
+  const totalPayouts=wins.reduce((n,w)=>n+Number(w.amount||0),0);
+  const pendingPayouts=Math.max(0,totalPayouts-paidPayouts);
+  const avail=Math.max(0,totalReceived-totalPayouts);
+  /* Performance metrics */
+  const activeM=(D.members||[]).filter(m=>!m.archivedAt&&!m.deletedAt);
+  const defaulterIds=new Set();
+  activeM.forEach(m=>{months.forEach(i=>{if(!m.payments||!m.payments['M'+i])defaulterIds.add(m.id);});});
+  const monthsWithWinner=months.filter(i=>wins.some(w=>Number(w.month)===i)).length;
+  const winCoverage=months.length?Math.round(100*monthsWithWinner/months.length):0;
+  const payoutCompletion=totalPayouts>0?Math.round(100*paidPayouts/totalPayouts):0;
+  const onTimeRate=activeM.length?Math.round(100*(1-defaulterIds.size/Math.max(activeM.length,1))):100;
+  /* Bar chart: use months with activity, cap at 8 most recent */
+  const activeMonths=months.filter(i=>{const s=monthCollectionStats(i);return s.received>0||s.pending>0||s.paidCount>0;});
+  const cMons=(activeMonths.length?activeMonths:months).slice(-8);
+  const bV1=cMons.map(i=>monthCollectionStats(i).received);
+  const bV2=cMons.map(i=>monthCollectionStats(i).pending);
+  const bLbls=cMons.map(i=>D.startMonth?monthNumLabel(i):`M${i}`);
+  /* Donut segments */
+  const dSegs=[
+    {v:avail,c:'#10B981',l:'Available'},
+    {v:paidPayouts,c:'#4F46E5',l:'Paid Out'},
+    {v:pendingPayouts,c:'#F59E0B',l:'Prize Pending'},
+    {v:totalPending,c:'#EF4444',l:'Uncollected'},
+  ].filter(d=>d.v>0);
+  function donutSvg(segs){
+    const r=46,cx=58,cy=58,sz=116;const tot=segs.reduce((n,s)=>n+s.v,0)||1;let ang=-90;let arcs='';
+    segs.forEach(s=>{const sw=(s.v/tot)*360;const rad=a=>a*Math.PI/180;
+      const x1=cx+r*Math.cos(rad(ang)),y1=cy+r*Math.sin(rad(ang));ang+=sw;
+      const x2=cx+r*Math.cos(rad(ang)),y2=cy+r*Math.sin(rad(ang));const lg=sw>180?1:0;
+      arcs+=`<path d="M${cx} ${cy} L${x1.toFixed(1)} ${y1.toFixed(1)} A${r} ${r} 0 ${lg} 1 ${x2.toFixed(1)} ${y2.toFixed(1)}Z" fill="${s.c}" opacity=".9"/>`;});
+    const pct=Math.round(avail/Math.max(totalReceived,1)*100);
+    return `<svg viewBox="0 0 ${sz} ${sz}" width="108" height="108">${arcs}<circle cx="${cx}" cy="${cy}" r="26" fill="var(--card)"/><text x="${cx}" y="${cy+4}" text-anchor="middle" font-size="10" font-weight="800" fill="var(--dark)">${pct}%</text></svg>`;
+  }
+  const qColors=['#4F46E5','#EF4444','#B45309','#991B1B','#0891B2','#059669','#7C3AED'];
+  const quickReports=_RPT_TYPES.filter(t=>t.value!=='overview');
+  function kpiCard(grad,svgBody,lbl,val,sub){
+    return `<div class="rpt-ov-kpi"><div class="rpt-ov-kpi-icon" style="background:${grad}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" stroke-width="2">${svgBody}</svg></div><div class="rpt-ov-kpi-lbl">${esc(lbl)}</div><div class="rpt-ov-kpi-val">${esc(val)}</div><div class="rpt-ov-kpi-sub">${esc(sub)}</div></div>`;
+  }
+  const recentMons=(activeMonths.length?activeMonths:months).slice(-5).reverse();
+  mount.innerHTML=`<div class="rpt-ov-wrap">
+    <div class="rpt-ov-kpi-row">
+      ${kpiCard('linear-gradient(135deg,#059669,#10B981)','<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>','Total Contributions',formatMoney(totalReceived,cur),activeM.length+' members')}
+      ${kpiCard('linear-gradient(135deg,#4F46E5,#818CF8)','<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>','Payouts Distributed',formatMoney(paidPayouts,cur),wins.filter(w=>String(w.paymentStatus)==='paid').length+' winners paid')}
+      ${kpiCard('linear-gradient(135deg,#F59E0B,#FCD34D)','<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>','Pending Payments',formatMoney(totalPending,cur),defaulterIds.size+' members pending')}
+      ${kpiCard('linear-gradient(135deg,#0891B2,#38BDF8)','<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>','Collection Rate',avgRate+'%',monthsWithWinner+' months with winner')}
+    </div>
+    <div class="rpt-ov-charts">
+      <div class="rpt-ov-chart-card">
+        <div class="rpt-ov-chart-hdr">
+          <div class="rpt-ov-chart-title">Contributions vs Pending</div>
+          <div class="rpt-ov-chart-legend">
+            <span><span class="rpt-ov-dot" style="background:#4F46E5"></span>Collected</span>
+            <span><span class="rpt-ov-dot" style="background:#EF4444"></span>Pending</span>
+          </div>
+        </div>
+        <div class="rpt-ov-chart-body">${groupedBarChartSvg(bV1,bV2,bLbls,'#4F46E5','#EF4444')}</div>
+      </div>
+      <div class="rpt-ov-chart-card">
+        <div class="rpt-ov-chart-title">Fund Allocation</div>
+        <div class="rpt-ov-donut-wrap" style="margin-top:8px">
+          ${donutSvg(dSegs)}
+          <div class="rpt-ov-donut-legend">${dSegs.map(s=>`<div class="rpt-ov-donut-lbl"><span class="rpt-ov-dot" style="background:${s.c}"></span><span>${esc(s.l)}</span><strong>${esc(formatMoney(s.v,cur))}</strong></div>`).join('')}</div>
+        </div>
+      </div>
+    </div>
+    <div class="rpt-ov-bottom">
+      <div class="rpt-ov-card">
+        <div class="rpt-ov-card-hdr">Quick Reports</div>
+        <div class="rpt-ov-qr-list">${quickReports.map((t,i)=>`<div class="rpt-ov-qr-item" onclick="setReportType('${t.value}')">
+          <div class="rpt-ov-qr-icon" style="background:${qColors[i%qColors.length]}">${_RPT_ICONS[t.value]||''}</div>
+          <div class="rpt-ov-qr-text"><div class="rpt-ov-qr-name">${esc(t.label)}</div><div class="rpt-ov-qr-desc">${esc(t.desc)}</div></div>
+          <svg class="rpt-ov-qr-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+        </div>`).join('')}</div>
+      </div>
+      <div class="rpt-ov-card">
+        <div class="rpt-ov-card-hdr">Committee Performance</div>
+        ${[
+          {label:'Collection Rate',pct:avgRate,color:'#10B981'},
+          {label:'Payout Completion',pct:payoutCompletion,color:'#4F46E5'},
+          {label:'Win Coverage',pct:winCoverage,color:'#0891B2'},
+          {label:'Members On-Time',pct:onTimeRate,color:'#F59E0B'},
+        ].map(p=>`<div class="rpt-ov-perf-item"><div class="rpt-ov-perf-row"><span class="rpt-ov-perf-lbl">${esc(p.label)}</span><span class="rpt-ov-perf-pct">${p.pct}%</span></div><div class="rpt-ov-perf-bar"><div class="rpt-ov-perf-fill" style="width:${p.pct}%;background:${p.color}"></div></div></div>`).join('')}
+        <div class="rpt-ov-card-hdr" style="margin-top:14px">Recent Monthly Summary</div>
+        <div class="rpt-ov-mini-tbl-wrap"><table class="rpt-ov-mini-tbl">
+          <thead><tr><th>Month</th><th class="r">Collected</th><th class="r">Rate</th><th>Winner</th></tr></thead>
+          <tbody>${recentMons.map(i=>{const s=monthCollectionStats(i);const w=wins.filter(x=>Number(x.month)===i);const wn=w.length?w[0].name:'—';return `<tr><td>${esc(D.startMonth?monthNumLabel(i):'M'+i)}</td><td class="r">${esc(formatMoney(s.received,cur))}</td><td class="r">${s.pct}%</td><td>${esc(wn)}</td></tr>`;}).join('')}</tbody>
+        </table></div>
+      </div>
+    </div>
+  </div>`;
+}
 function syncReportFilterOptions(){
   const type=document.getElementById('reportType')?.value||'monthly';
+  /* Hide filter toolbar for overview */
+  const filterCard=document.querySelector('.rpt-filter-card');
+  const resultsCard=document.querySelector('.rpt-results-card');
+  if(filterCard)filterCard.style.display=type==='overview'?'none':'';
+  if(resultsCard){resultsCard.style.borderTopLeftRadius=type==='overview'?'12px':'';resultsCard.style.borderTopRightRadius=type==='overview'?'12px':'';}
   const select=document.getElementById('reportStatus');if(!select)return;
   const current=select.value;
   let options=[['all','All statuses']];
@@ -8073,7 +8243,9 @@ function syncReportFilterOptions(){
   select.value=options.some(([value])=>value===current)?current:'all';
 }
 async function loadReport(){
-  const mount=document.getElementById('reportResults');if(!mount)return;const requestId=++reportRequestSeq;const type=document.getElementById('reportType').value;const search=document.getElementById('reportSearch').value.trim();const sort=document.getElementById('reportSort').value;const perPage=parseInt(document.getElementById('reportRows').value,10)||25;
+  const mount=document.getElementById('reportResults');if(!mount)return;const requestId=++reportRequestSeq;const type=document.getElementById('reportType').value;
+  if(type==='overview'){syncReportFilterOptions();updateReportHero();renderReportOverview();return;}
+  const search=document.getElementById('reportSearch').value.trim();const sort=document.getElementById('reportSort').value;const perPage=parseInt(document.getElementById('reportRows').value,10)||25;
   syncReportFilterOptions();
   const month=Math.max(0,parseInt(document.getElementById('reportMonth')?.value||'0',10)||0);const status=document.getElementById('reportStatus')?.value||'all';
   mount.innerHTML='<div style="padding:28px"><div class="skeleton" style="height:16px;margin-bottom:10px"></div><div class="skeleton" style="height:120px"></div></div>';
@@ -8149,6 +8321,7 @@ function _rptIsDateCol(key){return /_at$|date/.test(key);}
 function renderReportResults(){
   const mount=document.getElementById('reportResults'),summary=document.getElementById('reportSummary'),pager=document.getElementById('reportPagination');if(!mount)return;
   const type=document.getElementById('reportType')?.value||'report';
+  if(type==='overview'){renderReportOverview();return;}
   updateReportHero();
   const typeLabel=document.getElementById('reportType')?.selectedOptions?.[0]?.textContent||'Report';
   const title=document.getElementById('reportResultsTitle');if(title)title.textContent=typeLabel+' Results';
