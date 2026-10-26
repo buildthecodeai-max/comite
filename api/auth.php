@@ -162,7 +162,11 @@ try {
 
         case 'list-owners':
             $callingUser = Auth::requireSuperAdmin();
-            $owners = $enterprise ? $enterprise->listOwners($callingUser) : [];
+            try {
+                $owners = $enterprise ? $enterprise->listOwners($callingUser) : [];
+            } catch (\Throwable $ignored) {
+                $owners = [];
+            }
             Http::json(['ok' => true, 'owners' => $owners]);
 
         case 'signup':
