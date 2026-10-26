@@ -1041,6 +1041,16 @@ td.act-cell,td .action-group{text-align:center;}
 .wh-rate-pct{font-size:11px;font-weight:700;font-variant-numeric:tabular-nums;}
 .wh-rate-bar{height:4px;background:var(--border);border-radius:99px;overflow:hidden;}
 .wh-rate-fill{height:100%;border-radius:99px;transition:width .5s ease;}
+/* winner-history view toggle */
+.wh-view-toggle{display:flex;gap:4px;margin-bottom:12px;}
+.wh-vtgl{padding:5px 14px;border-radius:6px;font-size:11px;font-weight:600;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:background .15s,color .15s;}
+.wh-vtgl.active{background:var(--primary);color:#fff;border-color:var(--primary);}
+/* month-group header row */
+.wh-month-hdr td{background:rgba(79,70,229,.06);border-bottom:1px solid rgba(79,70,229,.12)!important;}
+.wh-month-hdr-inner{display:flex;align-items:center;gap:10px;padding:1px 0;}
+.wh-month-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--primary);}
+.wh-month-meta{font-size:10px;color:var(--muted);}
+.wh-winner-indent td:first-child{padding-left:22px;}
 /* skeleton rows for loading */
 .rpt-skeleton-row{display:flex;gap:12px;padding:10px 12px;border-bottom:1px solid var(--border);}
 .rpt-skeleton-cell{height:12px;border-radius:4px;background:rgba(0,0,0,.07);animation:pulse 1.5s ease-in-out infinite;}
@@ -6499,6 +6509,7 @@ let enterpriseCommittees=[];
 let committeeLoadToken=0;
 let committeeModalReturnPage='portfolio';
 let reportPage=1;
+let whView='member';
 let reportState={columns:[],rows:[],summary:{},total:0,totalPages:1,source:'local'};
 let reportLoadTimer=null;
 let reportRequestSeq=0;
@@ -8036,7 +8047,7 @@ const _RPT_TYPES=[
 ];
 function setReportType(value){
   const sel=document.getElementById('reportType');
-  if(sel){sel.value=value;syncReportFilterOptions();reportPage=1;loadReport();renderReportTypeCards();}
+  if(sel){sel.value=value;syncReportFilterOptions();reportPage=1;whView='member';loadReport();renderReportTypeCards();}
 }
 const _RPT_DOT_COLORS={
   'overview':'#4F46E5',
@@ -8402,6 +8413,41 @@ function renderReportResults(){
   }
   if(type==='winner-history'){
     const cur=reportCurrency();
+    const toggleHtml=`<div class="wh-view-toggle"><button class="wh-vtgl${whView==='member'?' active':''}" onclick="whView='member';renderReportResults()">Members</button><button class="wh-vtgl${whView==='month'?' active':''}" onclick="whView='month';renderReportResults()">By Month</button></div>`;
+    if(whView==='month'){
+      /* ── Month-wise view: one group per month, rows = individual wins ── */
+      const validW=D.winners.filter(w=>!w.archivedAt&&!w.deletedAt&&String(w.status||'declared').toLowerCase()!=='voided');
+      const monthMap={};
+      validW.forEach(w=>{const m=Number(w.month);if(!monthMap[m])monthMap[m]=[];monthMap[m].push(w);});
+      const sortedMonths=Object.keys(monthMap).map(Number).sort((a,b)=>a-b);
+      const tbHtml=sortedMonths.map(mon=>{
+        const wins=monthMap[mon];
+        const totalSh=wins.reduce((n,w)=>n+(Number(w.sharesWon)||1),0);
+        const totalPrize=wins.reduce((n,w)=>n+Number(w.amount||0),0);
+        const monthLbl=D.startMonth?monthShortLabel(mon):'Month '+mon;
+        const hdr=`<tr class="wh-month-hdr"><td colspan="6"><div class="wh-month-hdr-inner"><span class="wh-month-lbl">${esc(monthLbl)}</span><span class="wh-month-meta">${wins.length} win${wins.length!==1?'s':''} · ${totalSh} sh · ${formatMoney(totalPrize,cur)}</span></div></td></tr>`;
+        const rows=wins.map(w=>{
+          const mem=D.members.find(m=>Number(m.id)===Number(w.memberId));
+          const nm=mem?memberName(mem):(w.name||'—');
+          const st=winnerPaymentStatus(w,mem);
+          const stCls=st.toLowerCase().replace(/[^a-z]+/g,'-');
+          return `<tr class="wh-winner-indent">
+            <td class="wh-id-c">${w.memberId}</td>
+            <td class="wh-name-str">${esc(nm)}</td>
+            <td class="r wh-num-c">${Number(w.sharesWon)||1} sh</td>
+            <td class="r wh-money-c">${formatMoney(Number(w.amount||0),cur)}</td>
+            <td><span class="rpt-badge ${stCls}">${esc(st)}</span></td>
+            <td class="act">${mem?`<button type="button" class="btn btn-outline btn-sm" onclick="openMemberView(${w.memberId})">View</button>`:''}</td>
+          </tr>`;
+        }).join('');
+        return hdr+rows;
+      }).join('');
+      mount.innerHTML=toggleHtml+`<table class="wh-tbl"><thead><tr><th>#</th><th>Winner</th><th class="r">Shares Won</th><th class="r">Prize</th><th>Status</th><th></th></tr></thead><tbody>${tbHtml}</tbody></table>`;
+      requestAnimationFrame(()=>{mount.querySelectorAll('tbody tr.wh-winner-indent').forEach((tr,i)=>{tr.style.animationDelay=`${i*12}ms`;});});
+      if(pager)pager.innerHTML='';
+      return;
+    }
+    /* ── Member-wise view (default) ── */
     const tbHtml=reportState.rows.map(row=>{
       const memberId=Number(row[0])||0;
       const nameStr=String(row[1]||'');
@@ -8432,7 +8478,7 @@ function renderReportResults(){
         <td class="act"><button type="button" class="btn btn-outline btn-sm" onclick="openMemberView(${memberId})">View</button></td>
       </tr>`;
     }).join('');
-    mount.innerHTML=`<table class="wh-tbl"><thead><tr><th>#</th><th>Name &amp; Months Won</th><th class="r">Shares</th><th class="r">Wins</th><th class="r">Received</th><th class="r">Pending</th><th>Rate</th><th></th></tr></thead><tbody>${tbHtml}</tbody></table>`;
+    mount.innerHTML=toggleHtml+`<table class="wh-tbl"><thead><tr><th>#</th><th>Name &amp; Months Won</th><th class="r">Shares</th><th class="r">Wins</th><th class="r">Received</th><th class="r">Pending</th><th>Rate</th><th></th></tr></thead><tbody>${tbHtml}</tbody></table>`;
     requestAnimationFrame(()=>{
       mount.querySelectorAll('tbody tr').forEach((tr,i)=>{tr.style.animationDelay=`${i*14}ms`;});
       mount.querySelectorAll('.wh-rate-fill').forEach(bar=>{const w=bar.style.width;bar.style.width='0';requestAnimationFrame(()=>{bar.style.width=w;});});
