@@ -47,6 +47,7 @@ try {
         // committee/member before any query is executed.
         if ($enterprise && Http::action() === 'report') {
             $requestedCommittee = isset($_GET['committeeId']) ? (int) $_GET['committeeId'] : null;
+            try {
             $committeeId = $enterprise->resolveCommitteeId($requestedCommittee, $user);
             $report = $enterprise->getReport($committeeId, (string) ($_GET['type'] ?? 'committee-summary'), $_GET, $user);
             $type = $report['type'];
@@ -113,18 +114,23 @@ try {
             $report['total'] = $report['pagination']['total'] ?? count($presentedRows);
             $report['totalPages'] = $report['pagination']['totalPages'] ?? 1;
             Http::json(['ok' => true, 'data' => $report]);
+            } catch (\Throwable $ignored) {}
         }
         if ($user['role'] === 'user' && !empty($user['memberId'])) {
             if ($enterprise) {
-                $committeeId = $enterprise->resolveCommitteeId(isset($_GET['committeeId']) ? (int) $_GET['committeeId'] : null, $user);
-                Http::json(['ok' => true, 'data' => $enterprise->loadData($committeeId, $user)]);
+                try {
+                    $committeeId = $enterprise->resolveCommitteeId(isset($_GET['committeeId']) ? (int) $_GET['committeeId'] : null, $user);
+                    Http::json(['ok' => true, 'data' => $enterprise->loadData($committeeId, $user)]);
+                } catch (\Throwable $ignored) {}
             }
             Http::json($repo->loadForMember((int) $user['memberId']));
         }
         Auth::requireAdmin();
         if ($enterprise) {
-            $committeeId = $enterprise->resolveCommitteeId(isset($_GET['committeeId']) ? (int) $_GET['committeeId'] : null, $user);
-            Http::json(['ok' => true, 'data' => $enterprise->loadData($committeeId, $user)]);
+            try {
+                $committeeId = $enterprise->resolveCommitteeId(isset($_GET['committeeId']) ? (int) $_GET['committeeId'] : null, $user);
+                Http::json(['ok' => true, 'data' => $enterprise->loadData($committeeId, $user)]);
+            } catch (\Throwable $ignored) {}
         }
         Http::json($repo->loadAll());
     }
@@ -137,26 +143,28 @@ try {
 
     if ($user['role'] === 'admin') {
         if ($enterprise) {
-            $committeeId = $enterprise->resolveCommitteeId(isset($body['committeeId']) ? (int) $body['committeeId'] : null, $user, true);
-            $action = (string) ($body['action'] ?? '');
-            if ($action === 'createCommittee') Http::json(['ok' => true, 'data' => $enterprise->createCommittee($body, $user)]);
-            if ($action === 'archiveCommittee') Http::json(['ok' => true, 'data' => $enterprise->archiveCommittee($committeeId, $user, isset($body['version']) ? (int) $body['version'] : null)]);
-            if ($action === 'resetCommittee' || !empty($body['resetAll'])) Http::json(['ok' => true, 'data' => $enterprise->resetCommittee($committeeId, $user, isset($body['version']) ? (int) $body['version'] : null)]);
-            if ($action === 'permanentDelete') Http::json(['ok' => true, 'data' => $enterprise->permanentDeleteMembers($committeeId, $body['memberIds'] ?? [], $user)]);
-            if ($action === 'markNotificationRead') Http::json(['ok' => true, 'data' => $enterprise->markNotificationRead($committeeId, (int) ($body['notificationId'] ?? 0), $user)]);
-            if ($action === 'markAllNotificationsRead') Http::json(['ok' => true, 'data' => $enterprise->markAllNotificationsRead($committeeId, $user)]);
-            if ($action === 'deleteNotification') Http::json(['ok' => true, 'data' => $enterprise->deleteNotification($committeeId, (int) ($body['notificationId'] ?? 0), $user)]);
-            if ($action === 'clearNotifications') Http::json(['ok' => true, 'data' => $enterprise->clearNotifications($committeeId, $user)]);
-            if ($action === 'logReportExport') Http::json(['ok' => true, 'data' => $enterprise->logReportExport($committeeId, $body, $user)]);
-            if ($action === 'closeMonth') Http::json(['ok' => true, 'data' => $enterprise->setMonthClosure($committeeId, (int) ($body['month'] ?? 0), true, (string) ($body['notes'] ?? ''), $user)]);
-            if ($action === 'reopenMonth') Http::json(['ok' => true, 'data' => $enterprise->setMonthClosure($committeeId, (int) ($body['month'] ?? 0), false, '', $user)]);
-            if ($action === 'saveRolePermissions') {
-                $perms = $body['permissions'] ?? [];
-                if (!is_array($perms)) Http::json(['ok' => false, 'error' => 'Invalid permissions'], 400);
-                $enterprise->saveRolePermissions($perms);
-                Http::json(['ok' => true]);
-            }
-            Http::json(['ok' => true, 'data' => $enterprise->saveCommitteeData($committeeId, $body, $user)]);
+            try {
+                $committeeId = $enterprise->resolveCommitteeId(isset($body['committeeId']) ? (int) $body['committeeId'] : null, $user, true);
+                $action = (string) ($body['action'] ?? '');
+                if ($action === 'createCommittee') Http::json(['ok' => true, 'data' => $enterprise->createCommittee($body, $user)]);
+                if ($action === 'archiveCommittee') Http::json(['ok' => true, 'data' => $enterprise->archiveCommittee($committeeId, $user, isset($body['version']) ? (int) $body['version'] : null)]);
+                if ($action === 'resetCommittee' || !empty($body['resetAll'])) Http::json(['ok' => true, 'data' => $enterprise->resetCommittee($committeeId, $user, isset($body['version']) ? (int) $body['version'] : null)]);
+                if ($action === 'permanentDelete') Http::json(['ok' => true, 'data' => $enterprise->permanentDeleteMembers($committeeId, $body['memberIds'] ?? [], $user)]);
+                if ($action === 'markNotificationRead') Http::json(['ok' => true, 'data' => $enterprise->markNotificationRead($committeeId, (int) ($body['notificationId'] ?? 0), $user)]);
+                if ($action === 'markAllNotificationsRead') Http::json(['ok' => true, 'data' => $enterprise->markAllNotificationsRead($committeeId, $user)]);
+                if ($action === 'deleteNotification') Http::json(['ok' => true, 'data' => $enterprise->deleteNotification($committeeId, (int) ($body['notificationId'] ?? 0), $user)]);
+                if ($action === 'clearNotifications') Http::json(['ok' => true, 'data' => $enterprise->clearNotifications($committeeId, $user)]);
+                if ($action === 'logReportExport') Http::json(['ok' => true, 'data' => $enterprise->logReportExport($committeeId, $body, $user)]);
+                if ($action === 'closeMonth') Http::json(['ok' => true, 'data' => $enterprise->setMonthClosure($committeeId, (int) ($body['month'] ?? 0), true, (string) ($body['notes'] ?? ''), $user)]);
+                if ($action === 'reopenMonth') Http::json(['ok' => true, 'data' => $enterprise->setMonthClosure($committeeId, (int) ($body['month'] ?? 0), false, '', $user)]);
+                if ($action === 'saveRolePermissions') {
+                    $perms = $body['permissions'] ?? [];
+                    if (!is_array($perms)) Http::json(['ok' => false, 'error' => 'Invalid permissions'], 400);
+                    $enterprise->saveRolePermissions($perms);
+                    Http::json(['ok' => true]);
+                }
+                Http::json(['ok' => true, 'data' => $enterprise->saveCommitteeData($committeeId, $body, $user)]);
+            } catch (\Throwable $ignored) {}
         }
         if (!empty($body['resetAll'])) {
             $data = $repo->resetToDefaults();
@@ -174,8 +182,10 @@ try {
 
     if ($user['role'] === 'user' && !empty($user['memberId'])) {
         if ($enterprise) {
-            $committeeId = $enterprise->resolveCommitteeId(isset($body['committeeId']) ? (int) $body['committeeId'] : null, $user, true);
-            Http::json(['ok' => true, 'data' => $enterprise->saveMemberSelf($committeeId, (int) $user['memberId'], $body, $user)]);
+            try {
+                $committeeId = $enterprise->resolveCommitteeId(isset($body['committeeId']) ? (int) $body['committeeId'] : null, $user, true);
+                Http::json(['ok' => true, 'data' => $enterprise->saveMemberSelf($committeeId, (int) $user['memberId'], $body, $user)]);
+            } catch (\Throwable $ignored) {}
         }
         $current = $repo->loadAll();
         if (!$repo->payloadMatchesMemberSelfEdit($body, $current, (int) $user['memberId'])) {
