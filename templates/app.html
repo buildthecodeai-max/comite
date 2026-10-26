@@ -3903,6 +3903,13 @@ function saveWorkspaceState(page){
       whSearch:document.getElementById('whSearch')?.value||'',
       whMon:parseInt(document.getElementById('whMon')?.value,10)||0,
       winnerTab:_winnerActiveTab||'draw',
+      reportType:document.getElementById('reportType')?.value||'',
+      reportSearch:document.getElementById('reportSearch')?.value||'',
+      reportMonth:document.getElementById('reportMonth')?.value||'',
+      reportStatus:document.getElementById('reportStatus')?.value||'',
+      reportSort:document.getElementById('reportSort')?.value||'',
+      reportRows:document.getElementById('reportRows')?.value||'',
+      reportPage,
     };
     localStorage.setItem(VIEW_STATE_KEY,JSON.stringify(next));
   }catch(e){}
@@ -3914,6 +3921,7 @@ function restoreWorkspaceInputs(saved){
   trashPage=Math.max(1,parseInt(saved.trashPage,10)||1);
   pgPage=Math.max(1,parseInt(saved.pgPage,10)||1);
   auditPage=Math.max(1,parseInt(saved.auditPage,10)||1);
+  reportPage=Math.max(1,parseInt(saved.reportPage,10)||1);
   // Restore JS filter state
   if(saved.whFilter) _whStatusF=saved.whFilter;
   if(saved.winnerTab) _winnerActiveTab=saved.winnerTab;
@@ -3934,6 +3942,13 @@ function restoreWorkspaceInputs(saved){
   if(saved.whFilter){
     document.querySelectorAll('.wh-fp').forEach(b=>b.classList.toggle('active',b.dataset.whs===saved.whFilter));
   }
+  // Restore report state
+  if(saved.reportType) setV('reportType',saved.reportType);
+  if(saved.reportStatus) setV('reportStatus',saved.reportStatus);
+  if(saved.reportSearch) setV('reportSearch',saved.reportSearch);
+  if(saved.reportMonth) setV('reportMonth',saved.reportMonth);
+  if(saved.reportSort) setV('reportSort',saved.reportSort);
+  if(saved.reportRows) setV('reportRows',saved.reportRows);
 }
 function getActiveMonth(){ return activeMonth; }
 function clampMonth(mo){
@@ -8269,7 +8284,7 @@ function syncReportFilterOptions(){
 }
 async function loadReport(){
   const mount=document.getElementById('reportResults');if(!mount)return;const requestId=++reportRequestSeq;const type=document.getElementById('reportType').value;
-  if(type==='overview'){syncReportFilterOptions();updateReportHero();renderReportOverview();return;}
+  if(type==='overview'){syncReportFilterOptions();updateReportHero();renderReportOverview();saveWorkspaceState();return;}
   const search=document.getElementById('reportSearch').value.trim();const sort=document.getElementById('reportSort').value;const perPage=parseInt(document.getElementById('reportRows').value,10)||25;
   syncReportFilterOptions();
   const month=Math.max(0,parseInt(document.getElementById('reportMonth')?.value||'0',10)||0);const status=document.getElementById('reportStatus')?.value||'all';
@@ -8291,6 +8306,7 @@ async function loadReport(){
   }
   try{
     renderReportResults();
+    saveWorkspaceState();
   }catch(e){
     mount.innerHTML='<div class="enterprise-empty"><div class="empty-icon">⚠️</div><h3>Unable to display this report</h3><p>'+esc(e&&e.message?e.message:'Please reload and try again.')+'</p></div>';
     document.getElementById('reportPagination').innerHTML='';
