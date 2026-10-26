@@ -1018,6 +1018,29 @@ td.act-cell,td .action-group{text-align:center;}
 .rpt-ov-mini-tbl td.r{text-align:right;font-variant-numeric:tabular-nums;}
 .rpt-ov-mini-tbl tr:last-child td{border-bottom:none;}
 .report-money{font-variant-numeric:tabular-nums;font-weight:700;}
+/* === WINNER HISTORY ENHANCED TABLE === */
+.wh-tbl{width:100%;border-collapse:collapse;font-size:12px;}
+.wh-tbl thead tr{border-bottom:2px solid var(--border);}
+.wh-tbl th{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding:8px 10px;text-align:left;white-space:nowrap;}
+.wh-tbl th.r{text-align:right;}
+.wh-tbl td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:top;}
+.wh-tbl tr:last-child td{border-bottom:none;}
+.wh-tbl .r{text-align:right;}
+.wh-id-c{color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.wh-name-wrap{display:flex;flex-direction:column;gap:3px;}
+.wh-name-str{font-weight:600;color:var(--dark);font-size:12px;}
+.wh-chips{display:flex;flex-wrap:wrap;gap:3px;margin-top:2px;}
+.wh-chip{display:inline-flex;align-items:center;gap:3px;background:rgba(79,70,229,.08);color:#4F46E5;border:1px solid rgba(79,70,229,.2);border-radius:4px;padding:2px 6px;font-size:9.5px;font-weight:600;white-space:nowrap;}
+.wh-chip-sh{opacity:.65;font-weight:500;}
+.wh-num-c{font-variant-numeric:tabular-nums;color:var(--dark);}
+.wh-sub-c{font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums;}
+.wh-money-c{font-variant-numeric:tabular-nums;font-weight:700;color:var(--dark);}
+.wh-pend-pos{color:#B45309!important;}
+.wh-pend-zero{color:#059669!important;}
+.wh-rate-wrap{display:flex;flex-direction:column;gap:3px;min-width:58px;}
+.wh-rate-pct{font-size:11px;font-weight:700;font-variant-numeric:tabular-nums;}
+.wh-rate-bar{height:4px;background:var(--border);border-radius:99px;overflow:hidden;}
+.wh-rate-fill{height:100%;border-radius:99px;transition:width .5s ease;}
 /* skeleton rows for loading */
 .rpt-skeleton-row{display:flex;gap:12px;padding:10px 12px;border-bottom:1px solid var(--border);}
 .rpt-skeleton-cell{height:12px;border-radius:4px;background:rgba(0,0,0,.07);animation:pulse 1.5s ease-in-out infinite;}
@@ -7898,7 +7921,7 @@ function localReport(type){
       const sharesWon=getMemberSharesWon(m.id);
       const amtWon=getMemberAmtWon(m.id);
       const pendingAmt=getMemberPendingPrize(m);
-      const monthDetail=wins.map(w=>(D.startMonth?monthNumLabel(w.month):'M'+w.month)+': '+(w.sharesWon||1)+'sh').join(' · ');
+      const monthDetail=wins.map(w=>(D.startMonth?monthShortLabel(w.month):'M'+w.month)+': '+(w.sharesWon||1)+'sh').join(' · ');
       const winRate=m.shares>0?Math.round(sharesWon/m.shares*100)+'%':'—';
       return [m.id,memberName(m),m.shares,monthDetail,wins.length,sharesWon,amtWon,pendingAmt,winRate];
     });
@@ -8357,6 +8380,46 @@ function renderReportResults(){
       <div class="rpt-empty-sub">Try adjusting your filters or adding committee activity.</div>
     </div>`;
     if(pager)pager.innerHTML='';return;
+  }
+  if(type==='winner-history'){
+    const cur=reportCurrency();
+    const tbHtml=reportState.rows.map(row=>{
+      const memberId=Number(row[0])||0;
+      const nameStr=String(row[1]||'');
+      const shares=Number(row[2]||0);
+      const monthDetail=String(row[3]||'');
+      const totalWins=Number(row[4]||0);
+      const sharesWon=Number(row[5]||0);
+      const amtWon=Number(row[6]||0);
+      const pendingAmt=Number(row[7]||0);
+      const rateStr=String(row[8]||'—');
+      const rate=parseInt(rateStr)||0;
+      const chips=monthDetail&&monthDetail!=='—'?monthDetail.split(' · ').map(part=>{
+        const sep=part.lastIndexOf(': ');
+        const mon=sep>=0?part.slice(0,sep):part;
+        const sh=sep>=0?part.slice(sep+2):'';
+        return `<span class="wh-chip">${esc(mon)}${sh?`<span class="wh-chip-sh">${esc(sh)}</span>`:''}</span>`;
+      }).join(''):'';
+      const rateColor=rate>=70?'#10B981':rate>=35?'#F59E0B':'#EF4444';
+      const pendCls=pendingAmt>0?'wh-pend-pos':'wh-pend-zero';
+      return `<tr>
+        <td class="wh-id-c">${memberId}</td>
+        <td><div class="wh-name-wrap"><span class="wh-name-str">${esc(nameStr)}</span>${chips?`<div class="wh-chips">${chips}</div>`:''}</div></td>
+        <td class="r wh-num-c">${shares}</td>
+        <td class="r"><div class="wh-num-c">${totalWins} win${totalWins!==1?'s':''}</div><div class="wh-sub-c">${sharesWon} sh</div></td>
+        <td class="r wh-money-c">${formatMoney(amtWon,cur)}</td>
+        <td class="r wh-money-c ${pendCls}">${formatMoney(pendingAmt,cur)}</td>
+        <td><div class="wh-rate-wrap"><span class="wh-rate-pct" style="color:${rateColor}">${rateStr}</span><div class="wh-rate-bar"><div class="wh-rate-fill" style="width:${rateStr!=='—'?rate:0}%;background:${rateColor}"></div></div></div></td>
+        <td class="act"><button type="button" class="btn btn-outline btn-sm" onclick="openMemberView(${memberId})">View</button></td>
+      </tr>`;
+    }).join('');
+    mount.innerHTML=`<table class="wh-tbl"><thead><tr><th>#</th><th>Name &amp; Months Won</th><th class="r">Shares</th><th class="r">Wins</th><th class="r">Received</th><th class="r">Pending</th><th>Rate</th><th></th></tr></thead><tbody>${tbHtml}</tbody></table>`;
+    requestAnimationFrame(()=>{
+      mount.querySelectorAll('tbody tr').forEach((tr,i)=>{tr.style.animationDelay=`${i*14}ms`;});
+      mount.querySelectorAll('.wh-rate-fill').forEach(bar=>{const w=bar.style.width;bar.style.width='0';requestAnimationFrame(()=>{bar.style.width=w;});});
+    });
+    if(pager){const p=reportState.page,tp=reportState.totalPages,total=reportState.total,perPage=parseInt(document.getElementById('reportRows')?.value||'25',10);const from=Math.min((p-1)*perPage+1,total),to=Math.min(p*perPage,total);const pageNums=[];for(let i=1;i<=tp;i++){if(i===1||i===tp||Math.abs(i-p)<=1){pageNums.push(i);}else if(pageNums[pageNums.length-1]!=='…'){pageNums.push('…');}}const btnHtml=pageNums.map(n=>n==='…'?`<span style="padding:0 4px;color:var(--muted);font-size:11px">…</span>`:`<button class="rpt-pager-btn${n===p?' cur':''}" onclick="gotoReportPage(${n})" ${n===p?'aria-current="page"':''}>${n}</button>`).join('');pager.innerHTML=`<div class="rpt-pager"><span class="rpt-pager-info">Showing ${fmt(from)}–${fmt(to)} of ${fmt(total)}</span><div class="rpt-pager-btns"><button class="rpt-pager-btn" onclick="changeReportPage(-1)" ${p<=1?'disabled':''}>←</button>${btnHtml}<button class="rpt-pager-btn" onclick="changeReportPage(1)" ${p>=tp?'disabled':''}>→</button></div></div>`;}
+    return;
   }
   const canView=['defaulters','winner-history','no-win-members','win-fairness','member-statement','month-winner-summary'].includes(type);
   const viewTh=canView?'<th></th>':'';
