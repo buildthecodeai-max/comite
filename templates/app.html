@@ -3339,7 +3339,8 @@ function getMemberEntitlement(member){
 
 // Win entries for a member
 function getMemberWins(memberId){
-  return D.winners.filter(w=>w.memberId===memberId&&!w.archivedAt&&!w.deletedAt);
+  const id=Number(memberId);
+  return D.winners.filter(w=>Number(w.memberId)===id&&!w.archivedAt&&!w.deletedAt);
 }
 function memberInitials(name){
   const parts=String(name||'?').trim().split(/\s+/).filter(Boolean);
@@ -7976,7 +7977,7 @@ function localReport(type){
       const w=D.winners.filter(x=>Number(x.month)===mon&&!x.archivedAt&&!x.deletedAt&&String(x.status||'declared').toLowerCase()!=='voided');
       const cs=monthCollectionStats(mon);
       if(w.length===0) return [label,'—','—','—','—',cs.pct+'%',cs.paidCount+'/'+cs.total];
-      return [label,w.map(x=>x.name+' ('+(x.sharesWon||1)+')').join(', '),w.reduce((n,x)=>n+(x.sharesWon||1),0),w.reduce((n,x)=>n+Number(x.amount||0),0),w.map(x=>winnerPaymentStatus(x,D.members.find(m=>m.id===x.memberId))).join(', '),cs.pct+'%',cs.paidCount+'/'+cs.total];
+      return [label,w.map(x=>x.name+' ('+(x.sharesWon||1)+')').join(', '),w.reduce((n,x)=>n+(x.sharesWon||1),0),w.reduce((n,x)=>n+Number(x.amount||0),0),w.map(x=>winnerPaymentStatus(x,D.members.find(m=>Number(m.id)===Number(x.memberId)))).join(', '),cs.pct+'%',cs.paidCount+'/'+cs.total];
     });
     const withWinner=rows.filter(r=>r[1]!=='—').length;
     summary={'Months with Winner':withWinner,'Months Pending':D.totalMonths-withWinner,'Total Prize Declared':formatMoney(rows.reduce((n,r)=>n+Number(r[3]||0),0),reportCurrency())};
