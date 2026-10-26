@@ -7916,8 +7916,10 @@ function localReport(type){
   }else if(type==='winner-history'){
     columns=['ID','Name','Shares','Months Won','Total Wins','Shares Won','Prize Received','Pending Prize','Win Rate'];
     const winners=D.winners.filter(w=>!w.archivedAt&&!w.deletedAt&&String(w.status||'declared').toLowerCase()!=='voided');
-    rows=D.members.filter(m=>getMemberWins(m.id).length>0).map(m=>{
-      const wins=getMemberWins(m.id);
+    rows=D.members.filter(m=>getMemberWins(m.id).length>0)
+      .sort((a,b)=>{const aw=getMemberWins(a.id),bw=getMemberWins(b.id);return Math.min(...aw.map(w=>w.month))-Math.min(...bw.map(w=>w.month));})
+      .map(m=>{
+      const wins=getMemberWins(m.id).slice().sort((a,b)=>a.month-b.month);
       const sharesWon=getMemberSharesWon(m.id);
       const amtWon=getMemberAmtWon(m.id);
       const pendingAmt=getMemberPendingPrize(m);
@@ -8281,7 +8283,7 @@ async function loadReport(){
   }else{
     if(_rptAuthErr){const ds=document.getElementById('rptDataSource');if(ds)ds.innerHTML=' · <span style="color:#ef4444">Session expired — <a href="/" style="color:var(--primary)">log in</a> for live data</span>';}
     let local=filterLocalReport(localReport(type),search,sort);if(type==='defaulters'&&status!=='all')local.rows=local.rows.filter(r=>String(r[7]).toLowerCase()===String(status).toLowerCase());if(type==='winner'&&status!=='all'){if(status==='voided')local.rows=[];else if(status==='declared')local.rows=local.rows.filter(r=>String(r[6]).toLowerCase()!=='voided');else if(status.startsWith('payment:'))local.rows=local.rows.filter(r=>String(r[6]).toLowerCase()===String(status.slice(8)).toLowerCase());}
-    if(type==='winner-history'&&status!=='all'){if(status==='has-pending')local.rows=local.rows.filter(r=>Number(r[7])>0);else if(status==='fully-paid')local.rows=local.rows.filter(r=>Number(r[7])===0);else if(status==='multi-win')local.rows=local.rows.filter(r=>Number(r[4])>=2);}
+    if(type==='winner-history'){if(status!=='all'){if(status==='has-pending')local.rows=local.rows.filter(r=>Number(r[7])>0);else if(status==='fully-paid')local.rows=local.rows.filter(r=>Number(r[7])===0);else if(status==='multi-win')local.rows=local.rows.filter(r=>Number(r[4])>=2);}if(sort==='id'){local=Object.assign({},local,{rows:local.rows.slice().sort((a,b)=>{const aw=getMemberWins(Number(a[0])),bw=getMemberWins(Number(b[0]));return(aw.length?Math.min(...aw.map(w=>w.month)):999)-(bw.length?Math.min(...bw.map(w=>w.month)):999);})});}}
     if(type==='no-win-members'&&status!=='all'){if(status==='high-priority')local.rows=local.rows.filter(r=>Number(r[5])>=3);else if(status==='multi-share')local.rows=local.rows.filter(r=>Number(r[2])>=2);}
     if(type==='win-fairness'&&status!=='all'){if(status==='under')local.rows=local.rows.filter(r=>String(r[6])==='Under-represented');else if(status==='over')local.rows=local.rows.filter(r=>String(r[6])==='Over-represented');else if(status==='balanced')local.rows=local.rows.filter(r=>String(r[6])==='Balanced');}
     if(type==='month-winner-summary'&&status!=='all'){if(status==='with-winner')local.rows=local.rows.filter(r=>String(r[1])!=='—');else if(status==='no-winner')local.rows=local.rows.filter(r=>String(r[1])==='—');}
