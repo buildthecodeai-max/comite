@@ -256,7 +256,11 @@ try {
 
         case 'list-users':
             $callingUser = Auth::requireSuperAdmin();
-            $users = $enterprise ? $enterprise->listAllUsers($callingUser) : [];
+            try {
+                $users = $enterprise ? $enterprise->listAllUsers($callingUser) : [];
+            } catch (\Throwable $ignored) {
+                $users = [];
+            }
             Http::json(['ok' => true, 'users' => $users]);
 
         case 'update-user':
