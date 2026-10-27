@@ -505,7 +505,7 @@ final class DataRepository
     private function loadWinners(): array
     {
         $stmt = $this->pdo->query(
-            'SELECT member_id, name, month_num, shares_won, amount FROM winners ORDER BY month_num, id'
+            'SELECT member_id, name, month_num, shares_won, amount, payment_status FROM winners ORDER BY month_num, id'
         );
         $rows = $stmt->fetchAll();
 
@@ -516,6 +516,7 @@ final class DataRepository
                 'month' => (int) $row['month_num'],
                 'sharesWon' => (int) $row['shares_won'],
                 'amount' => (int) $row['amount'],
+                'paymentStatus' => (string) ($row['payment_status'] ?? 'paid'),
             ];
         }, $rows);
     }
@@ -730,8 +731,8 @@ final class DataRepository
     {
         $this->pdo->exec('DELETE FROM winners');
         $insert = $this->pdo->prepare(
-            'INSERT INTO winners (member_id, name, month_num, shares_won, amount)
-             VALUES (:member_id, :name, :month_num, :shares_won, :amount)'
+            'INSERT INTO winners (member_id, name, month_num, shares_won, amount, payment_status)
+             VALUES (:member_id, :name, :month_num, :shares_won, :amount, :payment_status)'
         );
 
         foreach ($winners as $winner) {
@@ -741,6 +742,7 @@ final class DataRepository
                 'month_num' => (int) ($winner['month'] ?? 0),
                 'shares_won' => max(1, (int) ($winner['sharesWon'] ?? 1)),
                 'amount' => (int) ($winner['amount'] ?? 0),
+                'payment_status' => (string) ($winner['paymentStatus'] ?? 'paid'),
             ]);
         }
     }

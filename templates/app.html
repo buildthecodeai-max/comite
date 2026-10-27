@@ -6913,9 +6913,7 @@ function winnerDateValue(w){
 }
 function winnerPaymentStatus(w,m){
   const explicit=String(pick(w,['paymentStatus','payment_status'],'')).toLowerCase();
-  if(explicit) return explicit;
-  if(!m) return 'pending';
-  const st=mStats(m);return st.pct>=100?'paid':st.paidM>0?'pending':'late';
+  return explicit||'paid';
 }
 function winnerStatusClass(status){ return status==='paid'?'gr':status==='late'?'rd':'or'; }
 function personPhotoHtml(person,size=48){
