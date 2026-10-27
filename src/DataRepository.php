@@ -151,7 +151,9 @@ final class DataRepository
             $this->saveMembers($data['members'] ?? []);
             $this->saveTrashedMembers($data['trashedMembers'] ?? []);
             $this->savePayments($data['members'] ?? [], $data['trashedMembers'] ?? []);
-            $this->saveWinners($data['winners'] ?? []);
+            if (array_key_exists('winners', $data) && is_array($data['winners'])) {
+                $this->saveWinners($data['winners']);
+            }
             $this->pdo->commit();
         } catch (\Throwable $e) {
             $this->pdo->rollBack();

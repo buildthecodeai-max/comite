@@ -3020,6 +3020,7 @@ async function save(opts={}){
       const saveScope=Number((typeof activeCommitteeId!=='undefined'&&activeCommitteeId)||payload.committeeId||0)||null;
       if(saveScope) payload.committeeId=saveScope;
       payload.version=Number(payload.version||0);
+      if(window.__confirmOverwrite) payload.confirmOverwrite=true;
       saveInFlight=api.saveData(payload);
       const result=await saveInFlight;
       const stillSameScope=!saveScope||typeof activeCommitteeId==='undefined'||Number(activeCommitteeId||0)===Number(saveScope||0);
@@ -3076,7 +3077,8 @@ async function importJSON(input){
     if(!confirm(`Restore backup?\n\nCommittee: ${name}\nMembers: ${mCount}\nWinners: ${wCount}\nPayment records: ${pCount}\n\n⚠️ This will OVERWRITE all current data. This cannot be undone.`)) return;
     showLoading('Restoring…');
     D=normalizeData(parsed);
-    await save();
+    window.__confirmOverwrite=true;
+    try{await save();}finally{window.__confirmOverwrite=false;}
     hideLoading();
     showToast('✅ Data restored from backup.');
     setTimeout(()=>location.reload(),800);

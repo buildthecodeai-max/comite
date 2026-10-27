@@ -8,6 +8,7 @@ use CommitteeManager\Auth;
 use CommitteeManager\DataRepository;
 use CommitteeManager\Http;
 use CommitteeManager\MultiCommitteeRepository;
+use CommitteeManager\SaveGuard;
 
 (function () {
     $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -142,6 +143,15 @@ try {
     $body = Http::readJsonBody();
 
     if ($user['role'] === 'admin') {
+        $bodyAction = (string) ($body['action'] ?? '');
+        $isPlainSave = $bodyAction === '' && empty($body['resetAll']);
+        try {
+            SaveGuard::snapshot($user, $bodyAction !== '' ? $bodyAction : (!empty($body['resetAll']) ? 'resetAll' : 'save'), $body);
+        } catch (\Throwable $ignored) {
+        }
+        if ($isPlainSave) {
+            SaveGuard::assertSafe($body);
+        }
         if ($enterprise) {
             try {
                 $committeeId = $enterprise->resolveCommitteeId(isset($body['committeeId']) ? (int) $body['committeeId'] : null, $user, true);
@@ -154,7 +164,16 @@ try {
                 if ($action === 'markAllNotificationsRead') Http::json(['ok' => true, 'data' => $enterprise->markAllNotificationsRead($committeeId, $user)]);
                 if ($action === 'deleteNotification') Http::json(['ok' => true, 'data' => $enterprise->deleteNotification($committeeId, (int) ($body['notificationId'] ?? 0), $user)]);
                 if ($action === 'clearNotifications') Http::json(['ok' => true, 'data' => $enterprise->clearNotifications($committeeId, $user)]);
-                if ($action === 'logReportExport') Http::json(['ok' => true, 'data' => $enterprise->logReportExport($committeeId, $body, $user)]);
+                if ($action === 'logReportExport') {
+                    $enterprise->logReportExport(
+                        $committeeId,
+                        (string) ($body['reportType'] ?? ''),
+                        (string) ($body['format'] ?? ''),
+                        is_array($body['filters'] ?? null) ? $body['filters'] : [],
+                        $user
+                    );
+                    Http::json(['ok' => true]);
+                }
                 if ($action === 'closeMonth') Http::json(['ok' => true, 'data' => $enterprise->setMonthClosure($committeeId, (int) ($body['month'] ?? 0), true, (string) ($body['notes'] ?? ''), $user)]);
                 if ($action === 'reopenMonth') Http::json(['ok' => true, 'data' => $enterprise->setMonthClosure($committeeId, (int) ($body['month'] ?? 0), false, '', $user)]);
                 if ($action === 'saveRolePermissions') {
@@ -174,6 +193,15 @@ try {
         if (($body['action'] ?? '') === 'permanentDelete') {
             $saved = $repo->permanentDeleteMembers($body['memberIds'] ?? []);
             Http::json(['ok' => true, 'data' => $saved]);
+        }
+
+        // Only a full-state save may reach saveAll(). Any other action that
+        // falls through here would otherwise wipe payments and winners.
+        if ($bodyAction !== '') {
+            Http::json(['ok' => false, 'error' => 'This action is not available right now.'], 409);
+        }
+        if (!isset($body['members']) || !is_array($body['members'])) {
+            Http::json(['ok' => false, 'error' => 'Refusing to save: payload contains no member list.'], 422);
         }
 
         $saved = $repo->saveAll($body);
