@@ -7210,8 +7210,66 @@ exportWinnersCSV=function(){const rows=[['Member ID','Name','Committee','Draw Nu
 async function exportWinnerHistory(format){
   if(format==='pdf'){
     const list=enterpriseWinnerFilteredList();if(!list.length)return showToast('ℹ️ No winners to export.');
-    const holder=document.createElement('div');holder.style.cssText='position:fixed;left:-9999px;width:1000px;background:#fff;padding:28px;color:#111';holder.innerHTML=`<h2>${esc(D.committeeName)} — Winner History</h2><table style="width:100%;border-collapse:collapse">${[['Member','Draw','Date','Prize','Status'],...list.map(w=>[w.name,'#'+getWinnerDrawNumber(w),formatDisplayDate(winnerDateValue(w)),formatMoney(w.amount,activeCurrency()),winnerPaymentStatus(w,D.members.find(m=>m.id===w.memberId))])].map((r,i)=>`<tr>${r.map(v=>`<${i?'td':'th'} style="border:1px solid #ddd;padding:8px;text-align:left">${esc(v)}</${i?'td':'th'}>`).join('')}</tr>`).join('')}</table>`;document.body.appendChild(holder);
-    try{const canvas=await html2canvas(holder,{scale:1.5,backgroundColor:'#fff'});const JsPDF=(window.jspdf&&window.jspdf.jsPDF)||window.jsPDF;const pdf=new JsPDF({orientation:'landscape',unit:'pt',format:'a4'});const pw=pdf.internal.pageSize.getWidth();pdf.addImage(canvas.toDataURL('image/png'),'PNG',30,30,pw-60,(pw-60)*canvas.height/canvas.width);pdf.save('winner-history.pdf');}finally{holder.remove();}
+    const JsPDF=(window.jspdf&&window.jspdf.jsPDF)||window.jsPDF;
+    if(!JsPDF)return showToast('❌ PDF library not loaded yet — try again in a moment.');
+    try{
+      const pdf=new JsPDF({orientation:'landscape',unit:'pt',format:'a4'});
+      const pw=pdf.internal.pageSize.getWidth(),ph=pdf.internal.pageSize.getHeight(),mg=28;
+      const usableW=pw-mg*2,curr=activeCurrency();
+      // Header bar
+      pdf.setFillColor(79,70,229);pdf.rect(mg,mg,usableW,28,'F');
+      pdf.setTextColor(255,255,255);pdf.setFontSize(13);pdf.setFont(undefined,'bold');
+      pdf.text(String(D.committeeName||'Committee'),mg+8,mg+13);
+      pdf.setFontSize(8);pdf.setFont(undefined,'normal');
+      pdf.text('Winner History Report  ·  '+new Date().toLocaleDateString('en-PK',{dateStyle:'medium'}),mg+8,mg+24);
+      // Summary stats
+      const totalPrize=list.reduce((s,w)=>s+(Number(w.amount)||0),0);
+      const paidCnt=list.filter(w=>winnerPaymentStatus(w,D.members.find(m=>Number(m.id)===Number(w.memberId)))==='paid').length;
+      const sY=mg+36,sW=Math.floor((usableW-8)/3);
+      [[240,253,244,22,101,52,String(list.length),'Total winners'],[239,246,255,30,64,175,formatMoney(totalPrize,curr),'Prize distributed'],[254,249,195,133,77,14,String(list.length-paidCnt),'Pending payment']].forEach(([r,g,b,tr,tg,tb,val,lbl],i)=>{
+        pdf.setFillColor(r,g,b);pdf.rect(mg+i*(sW+4),sY,sW,24,'F');
+        pdf.setTextColor(tr,tg,tb);pdf.setFontSize(val.length>10?9:13);pdf.setFont(undefined,'bold');
+        pdf.text(String(val),mg+i*(sW+4)+8,sY+15);
+        pdf.setFontSize(7);pdf.setFont(undefined,'normal');pdf.text(lbl,mg+i*(sW+4)+8,sY+22);
+      });
+      // Column definitions: [label, width ratio]
+      const cols=[['Month',.08],['Name',.24],['Draw',.07],['Date',.13],['Shares',.07],['Prize ('+curr+')',.27],['Status',.14]];
+      const cWs=cols.map(([,r])=>Math.floor(r*usableW));cWs[cWs.length-1]+=usableW-cWs.reduce((a,b)=>a+b,0);
+      let y=sY+32,rowH=16;
+      const drawHeader=()=>{
+        pdf.setFillColor(79,70,229);pdf.rect(mg,y,usableW,rowH,'F');
+        pdf.setTextColor(255,255,255);pdf.setFontSize(8.5);pdf.setFont(undefined,'bold');
+        let cx=mg;cols.forEach(([lbl],i)=>{pdf.text(lbl,cx+3,y+11);cx+=cWs[i];});
+        y+=rowH;pdf.setFont(undefined,'normal');
+      };
+      drawHeader();
+      list.forEach((w,ri)=>{
+        if(y+rowH>ph-mg-16){
+          pdf.setFontSize(7);pdf.setTextColor(148,163,184);
+          pdf.text('KametiPro · Confidential',mg,ph-mg+5);
+          pdf.text('Page '+pdf.internal.getNumberOfPages(),pw-mg,ph-mg+5,{align:'right'});
+          pdf.addPage();y=mg;drawHeader();
+        }
+        if(ri%2===0){pdf.setFillColor(248,250,252);pdf.rect(mg,y,usableW,rowH,'F');}
+        const mem=D.members.find(x=>Number(x.id)===Number(w.memberId));
+        const st=winnerPaymentStatus(w,mem);
+        const cells=[D.startMonth?monthNumLabel(Number(w.month)):'M'+w.month,w.name||'','#'+getWinnerDrawNumber(w),formatDisplayDate(winnerDateValue(w)),String(w.sharesWon||1),formatMoney(w.amount,curr),st.charAt(0).toUpperCase()+st.slice(1)];
+        let cx=mg;
+        cells.forEach((cell,i)=>{
+          if(i===6){pdf.setTextColor(st==='paid'?22:st==='pending'?202:220,st==='paid'?163:st==='pending'?138:38,st==='paid'?74:st==='pending'?4:38);}
+          else pdf.setTextColor(15,23,42);
+          pdf.setFontSize(8.5);
+          pdf.text(String(cell).slice(0,Math.max(4,Math.floor(cWs[i]/5.2))),cx+3,y+11);
+          cx+=cWs[i];
+        });
+        y+=rowH;
+      });
+      // Final footer
+      pdf.setFontSize(7);pdf.setTextColor(148,163,184);
+      pdf.text('KametiPro · Confidential',mg,ph-mg+5);
+      pdf.text('Page '+pdf.internal.getNumberOfPages(),pw-mg,ph-mg+5,{align:'right'});
+      pdf.save('winner-history.pdf');
+    }catch(e){return showToast('❌ '+(e.message||'PDF export failed'));}
   }else if(format==='excel'){
     const rows=[['Member ID','Name','Committee','Draw Number','Date','Shares Won','Prize','Payment Status','Record Status'],...winnerExportRows()];
     const xml=`<?xml version="1.0"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Winners"><Table>${rows.map(r=>`<Row>${r.map(v=>`<Cell><Data ss:Type="String">${esc(spreadsheetSafe(v))}</Data></Cell>`).join('')}</Row>`).join('')}</Table></Worksheet></Workbook>`;downloadBlob(xml,'application/vnd.ms-excel','winner-history.xls');
@@ -8577,24 +8635,53 @@ async function exportCurrentReport(format){
     const JsPDF=(window.jspdf&&window.jspdf.jsPDF)||window.jsPDF;
     if(!JsPDF) return showToast('❌ PDF library not loaded yet — try again in a moment.');
     const pdf=new JsPDF({orientation:'landscape',unit:'pt',format:'a4'});
-    const pw=pdf.internal.pageSize.getWidth(),ph=pdf.internal.pageSize.getHeight(),margin=28;
-    pdf.setFontSize(13);pdf.setFont(undefined,'bold');
-    pdf.text(`${D.committeeName} — ${type.replace(/-/g,' ')} Report`,margin,margin+10);
+    const pw=pdf.internal.pageSize.getWidth(),ph=pdf.internal.pageSize.getHeight(),mg=28;
+    const usableW=pw-mg*2;
+    const typeLabel=type.replace(/-/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+    // Header bar
+    pdf.setFillColor(79,70,229);pdf.rect(mg,mg,usableW,28,'F');
+    pdf.setTextColor(255,255,255);pdf.setFontSize(13);pdf.setFont(undefined,'bold');
+    pdf.text(String(D.committeeName||'Committee'),mg+8,mg+13);
     pdf.setFontSize(8);pdf.setFont(undefined,'normal');
-    pdf.text(new Date().toLocaleDateString('en-PK',{dateStyle:'medium'}),margin,margin+22);
-    const colCount=rows[0].length,usableW=pw-margin*2,colW=Math.floor(usableW/colCount);
-    let y=margin+36,rowH=15;
-    pdf.setFillColor(79,70,229);pdf.setTextColor(255,255,255);
-    pdf.rect(margin,y,usableW,rowH,'F');
-    pdf.setFontSize(7);pdf.setFont(undefined,'bold');
-    rows[0].forEach((cell,i)=>{pdf.text(String(cell).slice(0,18),margin+i*colW+3,y+10);});
-    y+=rowH;pdf.setTextColor(15,23,42);pdf.setFont(undefined,'normal');
+    pdf.text(typeLabel+' Report  ·  '+new Date().toLocaleDateString('en-PK',{dateStyle:'medium'}),mg+8,mg+24);
+    // Proportional column widths by header label
+    function _colR(lbl){const l=String(lbl).toLowerCase();if(/member id|winner id/.test(l))return .06;if(/^(name|winner|member)$/.test(l))return .20;if(/committee/.test(l))return .14;if(/month|draw/.test(l))return .07;if(/shares/.test(l))return .07;if(/rate/.test(l))return .06;if(/status/.test(l))return .09;if(/date|paid at|due at/.test(l))return .10;return .12;}
+    const hdr=rows[0];const rawR=hdr.map(h=>_colR(h));const rSum=rawR.reduce((a,b)=>a+b,0);
+    const cWs=rawR.map((r,i)=>i<hdr.length-1?Math.floor(r/rSum*usableW):0);cWs[cWs.length-1]=usableW-cWs.slice(0,-1).reduce((a,b)=>a+b,0);
+    let y=mg+36,rowH=16;
+    const drawHeader=()=>{
+      pdf.setFillColor(79,70,229);pdf.rect(mg,y,usableW,rowH,'F');
+      pdf.setTextColor(255,255,255);pdf.setFontSize(9);pdf.setFont(undefined,'bold');
+      let cx=mg;hdr.forEach((cell,i)=>{pdf.text(String(cell).slice(0,Math.max(4,Math.floor(cWs[i]/5.5))),cx+3,y+11);cx+=cWs[i];});
+      y+=rowH;pdf.setFont(undefined,'normal');
+    };
+    drawHeader();pdf.setTextColor(15,23,42);
     rows.slice(1).forEach((row,ri)=>{
-      if(y+rowH>ph-margin){pdf.addPage();y=margin;}
-      if(ri%2===0){pdf.setFillColor(248,250,252);pdf.rect(margin,y,usableW,rowH,'F');}
-      row.forEach((cell,i)=>{pdf.text(String(cell??'').slice(0,20),margin+i*colW+3,y+10);});
+      if(y+rowH>ph-mg-24){
+        pdf.setFontSize(7);pdf.setTextColor(148,163,184);
+        pdf.text('KametiPro · Confidential',mg,ph-mg+5);
+        pdf.text('Page '+pdf.internal.getNumberOfPages(),pw-mg,ph-mg+5,{align:'right'});
+        pdf.addPage();y=mg;drawHeader();pdf.setTextColor(15,23,42);
+      }
+      if(ri%2===0){pdf.setFillColor(248,250,252);pdf.rect(mg,y,usableW,rowH,'F');}
+      let cx=mg;row.forEach((cell,i)=>{pdf.setFontSize(9);pdf.text(String(cell??'').slice(0,Math.max(4,Math.floor(cWs[i]/5.5))),cx+3,y+11);cx+=cWs[i];});
       y+=rowH;
     });
+    // Summary section
+    if(reportState.summary&&Object.keys(reportState.summary).length){
+      if(y+32>ph-mg-24){pdf.addPage();y=mg;}
+      y+=8;pdf.setDrawColor(226,232,240);pdf.line(mg,y,mg+usableW,y);y+=12;
+      pdf.setFontSize(8);pdf.setFont(undefined,'bold');pdf.setTextColor(79,70,229);pdf.text('Summary',mg,y);y+=10;
+      const entries=Object.entries(reportState.summary);const sw=Math.min(Math.floor(usableW/entries.length),170);
+      entries.forEach(([k,v],i)=>{
+        pdf.setFontSize(7);pdf.setFont(undefined,'normal');pdf.setTextColor(100,116,139);pdf.text(String(k),mg+i*sw,y);
+        pdf.setFontSize(10);pdf.setFont(undefined,'bold');pdf.setTextColor(15,23,42);pdf.text(String(v??''),mg+i*sw,y+10);
+      });
+      y+=20;
+    }
+    pdf.setFontSize(7);pdf.setFont(undefined,'normal');pdf.setTextColor(148,163,184);
+    pdf.text('KametiPro · Confidential',mg,ph-mg+5);
+    pdf.text('Page '+pdf.internal.getNumberOfPages(),pw-mg,ph-mg+5,{align:'right'});
     pdf.save(`${type}-report.pdf`);
   }catch(e){return showToast('❌ '+(e.message||'PDF export failed'));}}
   api.logReportExport(activeCommitteeId,type,format).catch(()=>{});showToast(`✅ ${format.toUpperCase()} report ready.`);
