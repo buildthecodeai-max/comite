@@ -6379,11 +6379,26 @@ async function resetPin(id){
     showToast('❌ '+(e.message||'Failed to reset PIN'));
   }
 }
+function showPdfPreview(pdf,filename,onDownload){
+  const url=URL.createObjectURL(pdf.output('blob'));
+  const bg=document.createElement('div');
+  bg.className='modal-bg open';bg.style.zIndex='3000';bg.style.padding='12px';
+  bg.innerHTML='<div class="modal" role="dialog" aria-modal="true" style="max-width:1100px;width:100%;height:100%;max-height:100%;display:flex;flex-direction:column;gap:10px;padding:14px"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><h3 style="margin:0;flex:1;min-width:160px">PDF preview</h3><button type="button" class="btn btn-outline" data-a="tab">Open in new tab</button><button type="button" class="btn btn-bl" data-a="save">Save PDF</button><button type="button" class="btn btn-outline" data-a="close">Close</button></div><iframe title="PDF preview" style="flex:1;width:100%;border:1px solid var(--border);border-radius:8px;background:#fff"></iframe></div>';
+  bg.querySelector('iframe').src=url;
+  const close=()=>{bg.remove();URL.revokeObjectURL(url);document.removeEventListener('keydown',onKey);};
+  const onKey=e=>{if(e.key==='Escape')close();};
+  document.addEventListener('keydown',onKey);
+  bg.querySelector('[data-a="close"]').onclick=close;
+  bg.querySelector('[data-a="tab"]').onclick=()=>window.open(url,'_blank');
+  bg.querySelector('[data-a="save"]').onclick=()=>{pdf.save(filename);if(onDownload)onDownload();showToast('✅ PDF saved.');};
+  bg.addEventListener('click',e=>{if(e.target===bg)close();});
+  document.body.appendChild(bg);
+}
 function askPassword(title,message){
   return new Promise(resolve=>{
     const bg=document.createElement('div');
     bg.className='modal-bg open';bg.style.zIndex='3000';
-    bg.innerHTML='<div class="modal" role="dialog" aria-modal="true"><h3 style="margin:0 0 8px"></h3><p style="margin:0 0 14px;font-size:13px;opacity:.8"></p><div class="fg"><label>Your password</label><input type="password" autocomplete="current-password" style="width:100%"></div><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px"><button type="button" class="btn" data-a="cancel">Cancel</button><button type="button" class="btn btn-rd" data-a="ok">Confirm reset</button></div></div>';
+    bg.innerHTML='<div class="modal" role="dialog" aria-modal="true"><h3 style="margin:0 0 8px"></h3><p style="margin:0 0 14px;font-size:13px;opacity:.8"></p><div class="fg"><label>Your password</label><input type="password" autocomplete="current-password" style="width:100%"></div><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px"><button type="button" class="btn btn-outline" data-a="cancel">Cancel</button><button type="button" class="btn btn-rd" data-a="ok">Confirm reset</button></div></div>';
     bg.querySelector('h3').textContent=title;
     bg.querySelector('p').textContent=message;
     const input=bg.querySelector('input');
@@ -7287,7 +7302,7 @@ async function exportWinnerHistory(format){
       pdf.setFontSize(7);pdf.setTextColor(148,163,184);
       pdf.text('KametiPro · Confidential',mg,ph-mg+5);
       pdf.text('Page '+pdf.internal.getNumberOfPages(),pw-mg,ph-mg+5,{align:'right'});
-      pdf.save('winner-history.pdf');
+      showPdfPreview(pdf,'winner-history.pdf',()=>api.logReportExport(activeCommitteeId,'winner','pdf').catch(()=>{}));return;
     }catch(e){return showToast('❌ '+(e.message||'PDF export failed'));}
   }else if(format==='excel'){
     const rows=[['Member ID','Name','Committee','Draw Number','Date','Shares Won','Prize','Payment Status','Record Status'],...winnerExportRows()];
@@ -8701,7 +8716,7 @@ async function exportCurrentReport(format){
     pdf.setFontSize(7);pdf.setFont(undefined,'normal');pdf.setTextColor(148,163,184);
     pdf.text('KametiPro · Confidential',mg,ph-mg+5);
     pdf.text('Page '+pdf.internal.getNumberOfPages(),pw-mg,ph-mg+5,{align:'right'});
-    pdf.save(`${type}-report.pdf`);
+    showPdfPreview(pdf,`${type}-report.pdf`,()=>api.logReportExport(activeCommitteeId,type,'pdf').catch(()=>{}));return;
   }catch(e){return showToast('❌ '+(e.message||'PDF export failed'));}}
   api.logReportExport(activeCommitteeId,type,format).catch(()=>{});showToast(`✅ ${format.toUpperCase()} report ready.`);
 }
