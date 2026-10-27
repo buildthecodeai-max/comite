@@ -1036,6 +1036,25 @@ td.act-cell,td .action-group{text-align:center;}
 .rpt-ov-cur td{background:rgba(79,70,229,.07);}
 .rpt-ov-scroll{max-height:340px;overflow:auto;}
 .rpt-ov-empty{font-size:12px;color:var(--muted);padding:10px 0;}
+
+.rpt-ov-duo{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:10px;}
+.rpt-ov-duo-rev{grid-template-columns:minmax(0,1fr) minmax(0,1.6fr);}
+@media(max-width:1100px){.rpt-ov-duo,.rpt-ov-duo-rev{grid-template-columns:1fr;}}
+.rpt-ov-flow tfoot td{font-weight:800;border-top:2px solid var(--border);border-bottom:none;position:sticky;bottom:0;background:var(--card);}
+.rpt-ov-tag{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--primary);background:rgba(79,70,229,.12);padding:1px 6px;border-radius:99px;margin-left:4px;}
+.rpt-ov-rate{display:inline-flex;align-items:center;gap:6px;justify-content:flex-end;}
+.rpt-ov-rate .rpt-ov-bar{width:44px;margin:0;}
+.rpt-ov-lg .rpt-ov-dot{margin-right:7px;}
+.rpt-ov-stack{display:flex;height:12px;border-radius:99px;overflow:hidden;background:var(--border);margin:10px 0 8px;}
+.rpt-ov-stack>i{display:block;height:100%;}
+.rpt-ov-lg{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px;color:var(--dark);font-variant-numeric:tabular-nums;}
+.rpt-ov-lg:last-of-type{border-bottom:none;}
+.rpt-ov-warn{margin-top:8px;padding:7px 9px;border-radius:8px;background:rgba(239,68,68,.1);color:#EF4444;font-size:11px;font-weight:600;}
+.rpt-ov-metric{padding:7px 0;border-bottom:1px solid var(--border);}
+.rpt-ov-metric:last-child{border-bottom:none;}
+.rpt-ov-qr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px;}
+.rpt-ov-qr-grid .rpt-ov-qr-item{min-width:0;}
+.rpt-ov-qr-grid .rpt-ov-qr-desc{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .report-money{font-variant-numeric:tabular-nums;font-weight:700;}
 /* === WINNER HISTORY ENHANCED TABLE === */
 .wh-tbl{width:100%;border-collapse:collapse;font-size:12px;}
@@ -8408,104 +8427,85 @@ function renderReportOverview(){
   if(sumEl)sumEl.innerHTML='';if(pager)pager.innerHTML='';if(resultCount)resultCount.textContent='';
   const title=document.getElementById('reportResultsTitle');if(title)title.textContent='Reports Overview';
   const cur=reportCurrency();
-  /* KPI data */
-  const totalMonths=Number(D.totalMonths)||1;
-  const months=Array.from({length:totalMonths},(_,i)=>i+1);
-  let totalReceived=0,totalPending=0,pctSum=0;
-  months.forEach(i=>{const s=monthCollectionStats(i);totalReceived+=s.received;totalPending+=s.pending;pctSum+=s.pct;});
-  const avgRate=months.length?Math.round(pctSum/months.length):0;
-  const wins=(D.winners||[]).filter(w=>!w.archivedAt&&!w.deletedAt);
-  const paidPayouts=wins.filter(w=>String(w.paymentStatus)==='paid').reduce((n,w)=>n+Number(w.amount||0),0);
+  const totalMonths=Math.max(1,Number(D.totalMonths)||1);
+  const elapsed=Math.min(totalMonths,Math.max(1,Number(D.currentMonth)||1));
+  const elapsedMonths=Array.from({length:elapsed},(_,i)=>i+1);
+  const members=D.members||[];
+  const wins=(D.winners||[]).filter(w=>!w.archivedAt&&!w.deletedAt&&String(w.status||'declared').toLowerCase()!=='voided');
+  let totalReceived=0,dueToDate=0,receivedToDate=0,overdue=0;
+  Array.from({length:totalMonths},(_,i)=>i+1).forEach(i=>{const s=monthCollectionStats(i);totalReceived+=s.received;});
+  elapsedMonths.forEach(i=>{const s=monthCollectionStats(i);dueToDate+=s.due;receivedToDate+=s.received;overdue+=s.pending;});
+  const collectionRate=dueToDate>0?Math.round(100*receivedToDate/dueToDate):0;
+  const paidWins=wins.filter(w=>winnerPaymentStatus(w,null)==='paid');
   const totalPayouts=wins.reduce((n,w)=>n+Number(w.amount||0),0);
-  const pendingPayouts=Math.max(0,totalPayouts-paidPayouts);
-  const avail=Math.max(0,totalReceived-totalPayouts);
-  /* Performance metrics */
-  const activeM=(D.members||[]).filter(m=>!m.archivedAt&&!m.deletedAt);
-  const defaulterIds=new Set();
-  activeM.forEach(m=>{months.forEach(i=>{if(!m.payments||!m.payments['M'+i])defaulterIds.add(m.id);});});
-  const monthsWithWinner=months.filter(i=>wins.some(w=>Number(w.month)===i)).length;
-  const winCoverage=months.length?Math.round(100*monthsWithWinner/months.length):0;
-  const payoutCompletion=totalPayouts>0?Math.round(100*paidPayouts/totalPayouts):0;
-  const onTimeRate=activeM.length?Math.round(100*(1-defaulterIds.size/Math.max(activeM.length,1))):100;
-  /* Bar chart: use months with activity, cap at 8 most recent */
-  const activeMonths=months.filter(i=>{const s=monthCollectionStats(i);return s.received>0||s.pending>0||s.paidCount>0;});
-  const cMons=(activeMonths.length?activeMonths:months).slice(-8);
-  const bV1=cMons.map(i=>monthCollectionStats(i).received);
-  const bV2=cMons.map(i=>monthCollectionStats(i).pending);
-  const bLbls=cMons.map(i=>D.startMonth?monthNumLabel(i):`M${i}`);
-  /* Donut segments */
-  const dSegs=[
-    {v:avail,c:'#10B981',l:'Available'},
-    {v:paidPayouts,c:'#4F46E5',l:'Paid Out'},
-    {v:pendingPayouts,c:'#F59E0B',l:'Prize Pending'},
-    {v:totalPending,c:'#EF4444',l:'Uncollected'},
-  ].filter(d=>d.v>0);
-  function donutSvg(segs){
-    const r=46,cx=58,cy=58,sz=116;const tot=segs.reduce((n,s)=>n+s.v,0)||1;let ang=-90;let arcs='';
-    segs.forEach(s=>{const sw=(s.v/tot)*360;const rad=a=>a*Math.PI/180;
-      const x1=cx+r*Math.cos(rad(ang)),y1=cy+r*Math.sin(rad(ang));ang+=sw;
-      const x2=cx+r*Math.cos(rad(ang)),y2=cy+r*Math.sin(rad(ang));const lg=sw>180?1:0;
-      arcs+=`<path d="M${cx} ${cy} L${x1.toFixed(1)} ${y1.toFixed(1)} A${r} ${r} 0 ${lg} 1 ${x2.toFixed(1)} ${y2.toFixed(1)}Z" fill="${s.c}" opacity=".9"/>`;});
-    const pct=Math.round(avail/Math.max(totalReceived,1)*100);
-    return `<svg viewBox="0 0 ${sz} ${sz}" width="108" height="108">${arcs}<circle cx="${cx}" cy="${cy}" r="26" fill="var(--card)"/><text x="${cx}" y="${cy+4}" text-anchor="middle" font-size="10" font-weight="800" fill="var(--dark)">${pct}%</text></svg>`;
-  }
-  const qColors=['#4F46E5','#EF4444','#B45309','#991B1B','#0891B2','#059669','#7C3AED'];
-  const quickReports=_RPT_TYPES.filter(t=>t.value!=='overview');
+  const paidPayouts=paidWins.reduce((n,w)=>n+Number(w.amount||0),0);
+  const owedPayouts=Math.max(0,totalPayouts-paidPayouts);
+  const behind=members.filter(m=>elapsedMonths.some(i=>!(m.payments&&m.payments['M'+i])));
+  const monthsDrawn=elapsedMonths.filter(i=>wins.some(w=>Number(w.month)===i)).length;
+  const mLbl=i=>D.startMonth?monthNumLabel(i):'M'+i;
+  const money=v=>esc(formatMoney(v,cur));
+  const tone=p=>p>=90?'#10B981':p>=60?'#F59E0B':'#EF4444';
+
   function kpiCard(grad,svgBody,lbl,val,sub){
     return `<div class="rpt-ov-kpi"><div class="rpt-ov-kpi-icon" style="background:${grad}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" stroke-width="2">${svgBody}</svg></div><div class="rpt-ov-kpi-lbl">${esc(lbl)}</div><div class="rpt-ov-kpi-val">${esc(val)}</div><div class="rpt-ov-kpi-sub">${esc(sub)}</div></div>`;
   }
-  const recentMons=(activeMonths.length?activeMonths:months).slice(-5).reverse();
+
+  /* Monthly cash flow (elapsed months, newest first) */
+  let tC=0,tD=0,tP=0;
+  const flowRows=elapsedMonths.slice().reverse().map(i=>{
+    const s=monthCollectionStats(i);
+    const prize=wins.filter(w=>Number(w.month)===i).reduce((n,w)=>n+Number(w.amount||0),0);
+    tC+=s.received;tD+=s.due;tP+=prize;
+    const net=s.received-prize;
+    return `<tr${i===elapsed?' class="rpt-ov-cur"':''}><td>${esc(mLbl(i))}${i===elapsed?' <span class="rpt-ov-tag">current</span>':''}</td><td class="r">${money(s.received)}</td><td class="r" title="Due ${esc(formatMoney(s.due,cur))}"><span class="rpt-ov-rate"><span class="rpt-ov-bar"><i style="width:${Math.min(100,s.pct)}%;background:${tone(s.pct)}"></i></span>${s.pct}%</span></td><td class="r">${prize?money(prize):'—'}</td><td class="r" style="color:${net<0?'#EF4444':'inherit'}">${money(net)}</td></tr>`;
+  }).join('');
+  const tNet=tC-tP,tRate=tD>0?Math.round(100*tC/tD):0;
+  const flowCard=`<div class="rpt-ov-card"><div class="rpt-ov-card-hdr">Monthly cash flow</div>
+    <div class="rpt-ov-scroll rpt-ov-mini-tbl-wrap"><table class="rpt-ov-mini-tbl rpt-ov-flow"><thead><tr><th>Month</th><th class="r">Collected</th><th class="r">Collection</th><th class="r">Prizes</th><th class="r">Net</th></tr></thead><tbody>${flowRows}</tbody>
+    <tfoot><tr><td>Total</td><td class="r">${money(tC)}</td><td class="r" title="Due ${esc(formatMoney(tD,cur))}">${tRate}%</td><td class="r">${money(tP)}</td><td class="r" style="color:${tNet<0?'#EF4444':'inherit'}">${money(tNet)}</td></tr></tfoot></table></div>
+    <div class="rpt-ov-note">Net = collected minus prizes declared that month. Collection % is against the amount due. Months 1–${elapsed} of ${totalMonths}.</div></div>`;
+
+  /* Fund position */
+  const usedPaid=Math.min(paidPayouts,totalReceived),usedOwed=Math.min(owedPayouts,Math.max(0,totalReceived-usedPaid));
+  const free=totalReceived-totalPayouts;
+  const seg=(v,c)=>v>0&&totalReceived>0?`<i style="width:${(100*v/totalReceived).toFixed(2)}%;background:${c}"></i>`:'';
+  const ledger=(c,l,v,strong)=>`<div class="rpt-ov-lg"><span><span class="rpt-ov-dot" style="background:${c}"></span>${esc(l)}</span><span${strong?' style="font-weight:800"':''}>${v}</span></div>`;
+  const fundCard=`<div class="rpt-ov-card"><div class="rpt-ov-card-hdr">Fund position</div>
+    <div class="rpt-ov-big">${money(totalReceived)}</div><div class="rpt-ov-note">collected so far</div>
+    <div class="rpt-ov-stack" title="How collected money is used">${totalReceived>0?seg(usedPaid,'#4F46E5')+seg(usedOwed,'#F59E0B')+seg(Math.max(0,free),'#10B981'):''}</div>
+    ${ledger('#4F46E5','Prizes paid out',money(paidPayouts))}
+    ${ledger('#F59E0B','Prizes declared, unpaid',money(owedPayouts))}
+    ${ledger('#10B981','Free balance',`<span style="color:${free<0?'#EF4444':'inherit'}">${money(free)}</span>`,true)}
+    ${ledger('#EF4444','Overdue from members',money(overdue))}
+    ${free<0?`<div class="rpt-ov-warn">Prizes declared exceed money collected by ${money(-free)}.</div>`:''}</div>`;
+
+  /* Committee health, measured against months that have actually run */
+  const wonShares=members.reduce((n,m)=>n+Math.min(Number(m.shares||0),getMemberSharesWon(m.id)),0);
+  const totalShares=members.reduce((n,m)=>n+Number(m.shares||0),0);
+  const metrics=[
+    {l:'Collection rate',p:collectionRate,t:`${formatMoney(receivedToDate,cur)} of ${formatMoney(dueToDate,cur)} due`},
+    {l:'Members up to date',p:members.length?Math.round(100*(members.length-behind.length)/members.length):100,t:behind.length?`${behind.length} member${behind.length===1?'':'s'} behind on payments`:'Everyone is paid up'},
+    {l:'Months with a winner',p:Math.round(100*monthsDrawn/elapsed),t:`${monthsDrawn} of ${elapsed} months drawn`},
+    {l:'Prize payout completion',p:totalPayouts>0?Math.round(100*paidPayouts/totalPayouts):100,t:totalPayouts>0?`${paidWins.length} of ${wins.length} winners paid`:'No prizes declared yet'},
+    {l:'Shares won',p:totalShares?Math.round(100*wonShares/totalShares):0,t:`${wonShares} of ${totalShares} shares · ${Math.max(0,totalShares-wonShares)} remaining`,neutral:true},
+  ];
+  const healthCard=`<div class="rpt-ov-card"><div class="rpt-ov-card-hdr">Committee health</div>${metrics.map(m=>`<div class="rpt-ov-metric"><div class="rpt-ov-perf-row"><span class="rpt-ov-perf-lbl">${esc(m.l)}</span><span class="rpt-ov-perf-pct">${m.p}%</span></div><div class="rpt-ov-bar"><i style="width:${Math.min(100,m.p)}%;background:${m.neutral?'#4F46E5':tone(m.p)}"></i></div><div class="rpt-ov-note">${esc(m.t)}</div></div>`).join('')}</div>`;
+
+  /* Quick reports */
+  const qColors=['#4F46E5','#EF4444','#B45309','#991B1B','#0891B2','#059669','#7C3AED'];
+  const quickReports=_RPT_TYPES.filter(t=>t.value!=='overview');
+  const quickCard=`<div class="rpt-ov-card"><div class="rpt-ov-card-hdr">Open a report</div><div class="rpt-ov-qr-grid">${quickReports.map((t,i)=>`<div class="rpt-ov-qr-item" onclick="setReportType('${t.value}')"><div class="rpt-ov-qr-icon" style="background:${qColors[i%qColors.length]}">${_RPT_ICONS[t.value]||''}</div><div class="rpt-ov-qr-text"><div class="rpt-ov-qr-name">${esc(t.label)}</div><div class="rpt-ov-qr-desc">${esc(t.desc)}</div></div></div>`).join('')}</div></div>`;
+
   mount.innerHTML=`<div class="rpt-ov-wrap">
     <div class="rpt-ov-kpi-row">
-      ${kpiCard('linear-gradient(135deg,#059669,#10B981)','<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>','Total Contributions',formatMoney(totalReceived,cur),activeM.length+' members')}
-      ${kpiCard('linear-gradient(135deg,#4F46E5,#818CF8)','<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>','Payouts Distributed',formatMoney(paidPayouts,cur),wins.filter(w=>String(w.paymentStatus)==='paid').length+' winners paid')}
-      ${kpiCard('linear-gradient(135deg,#F59E0B,#FCD34D)','<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>','Pending Payments',formatMoney(totalPending,cur),defaulterIds.size+' members pending')}
-      ${kpiCard('linear-gradient(135deg,#0891B2,#38BDF8)','<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>','Collection Rate',avgRate+'%',monthsWithWinner+' months with winner')}
+      ${kpiCard('linear-gradient(135deg,#059669,#10B981)','<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>','Total Contributions',formatMoney(totalReceived,cur),members.length+' members')}
+      ${kpiCard('linear-gradient(135deg,#4F46E5,#818CF8)','<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>','Payouts Distributed',formatMoney(paidPayouts,cur),paidWins.length+' of '+wins.length+' winners paid')}
+      ${kpiCard('linear-gradient(135deg,#F59E0B,#FCD34D)','<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>','Overdue Payments',formatMoney(overdue,cur),behind.length+' member'+(behind.length===1?'':'s')+' behind')}
+      ${kpiCard('linear-gradient(135deg,#0891B2,#38BDF8)','<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>','Collection Rate',collectionRate+'%',monthsDrawn+' of '+elapsed+' months drawn')}
     </div>
     ${renderOverviewInsights(cur)}
-    <div class="rpt-ov-charts">
-      <div class="rpt-ov-chart-card">
-        <div class="rpt-ov-chart-hdr">
-          <div class="rpt-ov-chart-title">Contributions vs Pending</div>
-          <div class="rpt-ov-chart-legend">
-            <span><span class="rpt-ov-dot" style="background:#4F46E5"></span>Collected</span>
-            <span><span class="rpt-ov-dot" style="background:#EF4444"></span>Pending</span>
-          </div>
-        </div>
-        <div class="rpt-ov-chart-body">${groupedBarChartSvg(bV1,bV2,bLbls,'#4F46E5','#EF4444')}</div>
-      </div>
-      <div class="rpt-ov-chart-card">
-        <div class="rpt-ov-chart-title">Fund Allocation</div>
-        <div class="rpt-ov-donut-wrap" style="margin-top:8px">
-          ${donutSvg(dSegs)}
-          <div class="rpt-ov-donut-legend">${dSegs.map(s=>`<div class="rpt-ov-donut-lbl"><span class="rpt-ov-dot" style="background:${s.c}"></span><span>${esc(s.l)}</span><strong>${esc(formatMoney(s.v,cur))}</strong></div>`).join('')}</div>
-        </div>
-      </div>
-    </div>
-    <div class="rpt-ov-bottom">
-      <div class="rpt-ov-card">
-        <div class="rpt-ov-card-hdr">Quick Reports</div>
-        <div class="rpt-ov-qr-list">${quickReports.map((t,i)=>`<div class="rpt-ov-qr-item" onclick="setReportType('${t.value}')">
-          <div class="rpt-ov-qr-icon" style="background:${qColors[i%qColors.length]}">${_RPT_ICONS[t.value]||''}</div>
-          <div class="rpt-ov-qr-text"><div class="rpt-ov-qr-name">${esc(t.label)}</div><div class="rpt-ov-qr-desc">${esc(t.desc)}</div></div>
-          <svg class="rpt-ov-qr-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
-        </div>`).join('')}</div>
-      </div>
-      <div class="rpt-ov-card">
-        <div class="rpt-ov-card-hdr">Committee Performance</div>
-        ${[
-          {label:'Collection Rate',pct:avgRate,color:'#10B981'},
-          {label:'Payout Completion',pct:payoutCompletion,color:'#4F46E5'},
-          {label:'Win Coverage',pct:winCoverage,color:'#0891B2'},
-          {label:'Members On-Time',pct:onTimeRate,color:'#F59E0B'},
-        ].map(p=>`<div class="rpt-ov-perf-item"><div class="rpt-ov-perf-row"><span class="rpt-ov-perf-lbl">${esc(p.label)}</span><span class="rpt-ov-perf-pct">${p.pct}%</span></div><div class="rpt-ov-perf-bar"><div class="rpt-ov-perf-fill" style="width:${p.pct}%;background:${p.color}"></div></div></div>`).join('')}
-        <div class="rpt-ov-card-hdr" style="margin-top:14px">Recent Monthly Summary</div>
-        <div class="rpt-ov-mini-tbl-wrap"><table class="rpt-ov-mini-tbl">
-          <thead><tr><th>Month</th><th class="r">Collected</th><th class="r">Rate</th><th>Winner</th></tr></thead>
-          <tbody>${recentMons.map(i=>{const s=monthCollectionStats(i);const w=wins.filter(x=>Number(x.month)===i);const wn=w.length?w[0].name:'—';return `<tr><td>${esc(D.startMonth?monthNumLabel(i):'M'+i)}</td><td class="r">${esc(formatMoney(s.received,cur))}</td><td class="r">${s.pct}%</td><td>${esc(wn)}</td></tr>`;}).join('')}</tbody>
-        </table></div>
-      </div>
-    </div>
+    <div class="rpt-ov-duo">${flowCard}${fundCard}</div>
+    <div class="rpt-ov-duo rpt-ov-duo-rev">${healthCard}${quickCard}</div>
   </div>`;
 }
 function syncReportFilterOptions(){
