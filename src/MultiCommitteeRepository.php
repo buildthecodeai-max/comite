@@ -1562,6 +1562,9 @@ final class MultiCommitteeRepository
                 if (!isset($existing[$winnerId])) {
                     throw new InvalidArgumentException('Winner does not belong to this committee.', 422);
                 }
+                if (!empty($winner['archivedAt']) || !empty($winner['deletedAt']) || (string) ($winner['status'] ?? '') === 'archived') {
+                    continue; // let the void loop below remove it
+                }
                 $retainedIds[$winnerId] = true;
                 $paymentStatus = $this->validateStatus(
                     (string) ($winner['paymentStatus'] ?? $existing[$winnerId]['paymentStatus']),

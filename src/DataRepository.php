@@ -736,6 +736,9 @@ final class DataRepository
         );
 
         foreach ($winners as $winner) {
+            if (!empty($winner['archivedAt']) || !empty($winner['deletedAt']) || (string) ($winner['status'] ?? '') === 'archived') {
+                continue;
+            }
             $insert->execute([
                 'member_id' => (int) ($winner['memberId'] ?? 0),
                 'name' => (string) ($winner['name'] ?? ''),
