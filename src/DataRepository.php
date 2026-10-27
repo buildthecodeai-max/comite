@@ -163,6 +163,11 @@ final class DataRepository
         return $this->loadAll();
     }
 
+    public function currentUpdatedAt(): int
+    {
+        return (int) ($this->pdo->query('SELECT updated_at FROM settings WHERE id = 1')->fetchColumn() ?: 0);
+    }
+
     public function permanentDeleteMembers(array $memberIds): array
     {
         $ids = array_values(array_filter(array_map('intval', $memberIds), static fn(int $id): bool => $id > 0));

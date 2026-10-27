@@ -111,6 +111,46 @@ final class Auth
         return true;
     }
 
+    /**
+     * Re-verify the logged-in user's own password before a destructive action.
+     * Throttled per session so a hijacked session cannot brute-force it.
+     */
+    public static function confirmPassword(string $password, DataRepository $repo, PDO $pdo): bool
+    {
+        $now = time();
+        if (($_SESSION['pw_confirm_locked_until'] ?? 0) > $now) {
+            return false;
+        }
+        if ($password === '') {
+            return false;
+        }
+
+        $ok = false;
+        $user = self::user();
+        if ($user !== null && $user['role'] === 'admin') {
+            $ok = $repo->verifyAdminPassword($password);
+        } elseif ($user !== null && !empty($user['userId'])) {
+            $stmt = $pdo->prepare('SELECT password_hash FROM users WHERE id = ? LIMIT 1');
+            $stmt->execute([(int) $user['userId']]);
+            $hash = (string) ($stmt->fetchColumn() ?: '');
+            $ok = $hash !== '' && password_verify($password, $hash);
+        }
+
+        if ($ok) {
+            unset($_SESSION['pw_confirm_fails'], $_SESSION['pw_confirm_locked_until']);
+            return true;
+        }
+
+        $fails = (int) ($_SESSION['pw_confirm_fails'] ?? 0) + 1;
+        $_SESSION['pw_confirm_fails'] = $fails;
+        if ($fails >= 5) {
+            $_SESSION['pw_confirm_locked_until'] = $now + 900;
+            $_SESSION['pw_confirm_fails'] = 0;
+        }
+
+        return false;
+    }
+
     public static function loginMember(int $memberId, string $pin, DataRepository $repo): bool
     {
         if (!$repo->verifyMemberPin($memberId, $pin)) {

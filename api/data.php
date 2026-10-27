@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/src/bootstrap.php';
 
 use CommitteeManager\Auth;
+use CommitteeManager\Database;
 use CommitteeManager\DataRepository;
 use CommitteeManager\Http;
 use CommitteeManager\MultiCommitteeRepository;
@@ -145,6 +146,12 @@ try {
     if ($user['role'] === 'admin') {
         $bodyAction = (string) ($body['action'] ?? '');
         $isPlainSave = $bodyAction === '' && empty($body['resetAll']);
+        if (!empty($body['resetAll']) || $bodyAction === 'resetCommittee') {
+            if (!Auth::confirmPassword((string) ($body['password'] ?? ''), $repo, Database::connection())) {
+                Http::json(['ok' => false, 'error' => 'Incorrect password. Nothing was reset.'], 403);
+            }
+            unset($body['password']);
+        }
         try {
             SaveGuard::snapshot($user, $bodyAction !== '' ? $bodyAction : (!empty($body['resetAll']) ? 'resetAll' : 'save'), $body);
         } catch (\Throwable $ignored) {
@@ -183,7 +190,12 @@ try {
                     Http::json(['ok' => true]);
                 }
                 Http::json(['ok' => true, 'data' => $enterprise->saveCommitteeData($committeeId, $body, $user)]);
-            } catch (\Throwable $ignored) {}
+            } catch (\Throwable $ignored) {
+                // The save itself committed; only the read-back failed. Never replay it through the legacy writer.
+                if ($enterprise->hasCommittedWrite()) {
+                    Http::json(['ok' => true, 'data' => $repo->loadAll()]);
+                }
+            }
         }
         if (!empty($body['resetAll'])) {
             $data = $repo->resetToDefaults();
@@ -202,6 +214,14 @@ try {
         }
         if (!isset($body['members']) || !is_array($body['members'])) {
             Http::json(['ok' => false, 'error' => 'Refusing to save: payload contains no member list.'], 422);
+        }
+
+        $baseUpdatedAt = (int) ($body['baseUpdatedAt'] ?? 0);
+        if ($baseUpdatedAt > 0 && $repo->currentUpdatedAt() > $baseUpdatedAt) {
+            Http::json([
+                'ok' => false,
+                'error' => 'This data was changed on another device or tab. Reload the page to get the latest data — your save was blocked so nothing is overwritten.',
+            ], 409);
         }
 
         $saved = $repo->saveAll($body);

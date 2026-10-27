@@ -2833,8 +2833,8 @@ const api={
   permanentDelete(memberIds){
     return this.request('/data.php',{method:'POST',body:JSON.stringify({action:'permanentDelete',memberIds,committeeId:activeCommitteeId||D.committeeId})});
   },
-  resetAll(){
-    return this.request('/data.php',{method:'POST',body:JSON.stringify({resetAll:true})});
+  resetAll(password){
+    return this.request('/data.php',{method:'POST',body:JSON.stringify({resetAll:true,password})});
   },
   createCommittee(committee){
     return this.request('/data.php',{method:'POST',body:JSON.stringify({action:'createCommittee',committee})});
@@ -2842,8 +2842,8 @@ const api={
   archiveCommittee(committeeId){
     return this.request('/data.php',{method:'POST',body:JSON.stringify({action:'archiveCommittee',committeeId})});
   },
-  resetCommittee(committeeId,version){
-    return this.request('/data.php',{method:'POST',body:JSON.stringify({action:'resetCommittee',committeeId,version})});
+  resetCommittee(committeeId,version,password){
+    return this.request('/data.php',{method:'POST',body:JSON.stringify({action:'resetCommittee',committeeId,version,password})});
   },
   markNotificationRead(notificationId,committeeId){
     return this.request('/data.php',{method:'POST',body:JSON.stringify({action:'markNotificationRead',notificationId,committeeId})});
@@ -3013,6 +3013,7 @@ async function save(opts={}){
     saveQueued=false;
     const wasQuiet=quiet||quietQueued;
     quietQueued=false;
+    const baseUpdatedAt=Number(D.updatedAt)||0;
     D.updatedAt=Date.now();
     if(!wasQuiet) showLoading('Saving…');
     try{
@@ -3021,6 +3022,7 @@ async function save(opts={}){
       if(saveScope) payload.committeeId=saveScope;
       payload.version=Number(payload.version||0);
       if(window.__confirmOverwrite) payload.confirmOverwrite=true;
+      else payload.baseUpdatedAt=baseUpdatedAt;
       saveInFlight=api.saveData(payload);
       const result=await saveInFlight;
       const stillSameScope=!saveScope||typeof activeCommitteeId==='undefined'||Number(activeCommitteeId||0)===Number(saveScope||0);
@@ -6377,11 +6379,26 @@ async function resetPin(id){
     showToast('❌ '+(e.message||'Failed to reset PIN'));
   }
 }
+function askPassword(title,message){
+  return new Promise(resolve=>{
+    const bg=document.createElement('div');
+    bg.className='modal-bg open';bg.style.zIndex='3000';
+    bg.innerHTML='<div class="modal" role="dialog" aria-modal="true"><h3 style="margin:0 0 8px"></h3><p style="margin:0 0 14px;font-size:13px;opacity:.8"></p><div class="fg"><label>Your password</label><input type="password" autocomplete="current-password" style="width:100%"></div><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px"><button type="button" class="btn" data-a="cancel">Cancel</button><button type="button" class="btn btn-rd" data-a="ok">Confirm reset</button></div></div>';
+    bg.querySelector('h3').textContent=title;
+    bg.querySelector('p').textContent=message;
+    const input=bg.querySelector('input');
+    const done=v=>{bg.remove();resolve(v);};
+    bg.querySelector('[data-a="cancel"]').onclick=()=>done(null);
+    bg.querySelector('[data-a="ok"]').onclick=()=>done(input.value||null);
+    input.addEventListener('keydown',e=>{if(e.key==='Enter')done(input.value||null);if(e.key==='Escape')done(null);});
+    document.body.appendChild(bg);input.focus();
+  });
+}
 async function resetAll(){
-  if(!confirm('⚠️ DELETE ALL DATA?')) return;
-  if(!confirm('Final confirm — this cannot be undone!')) return;
+  const pw=await askPassword('Reset all data','Enter your password to delete all data. Without the correct password nothing is changed.');
+  if(!pw) return;
   try{
-    const result=await api.resetAll();
+    const result=await api.resetAll(pw);
     D=normalizeData(result.data);
     renderDashboard(); renderSettings(); renderUserAccounts();
     showToast('✅ All data reset.');
@@ -8702,8 +8719,8 @@ async function saveEnterpriseCommitteeSettings(){
   try{await save();applyCommitteeTheme();syncEnterpriseStateFromData();renderSettings();showToast('✅ Committee settings saved.');}catch(e){}
 }
 resetAll=async function(){
-  if(!isAdmin())return;if(!confirm(`Reset active committee "${activeCommittee().name}"? Other committees and permanent winner history will not be touched.`))return;if(!confirm('Final confirmation: clear operational data for this committee?'))return;
-  try{const result=activeCommitteeId?await api.resetCommittee(activeCommitteeId,D.version):await api.resetAll();D=normalizeData(result.data||result);syncEnterpriseStateFromData();refreshAllViews();renderSettings();showToast('✅ Committee data reset.');}catch(e){showToast('❌ '+(e.message||'Reset failed'));}
+  if(!isAdmin())return;const pw=await askPassword(`Reset "${activeCommittee().name}"`,'This clears members, payments and winners for this committee. Enter your password to confirm — without it nothing is changed.');if(!pw)return;
+  try{const result=activeCommitteeId?await api.resetCommittee(activeCommitteeId,D.version,pw):await api.resetAll(pw);D=normalizeData(result.data||result);syncEnterpriseStateFromData();refreshAllViews();renderSettings();showToast('✅ Committee data reset.');}catch(e){showToast('❌ '+(e.message||'Reset failed'));}
 };
 
 const legacyRefreshAllEnterprise=refreshAllViews;

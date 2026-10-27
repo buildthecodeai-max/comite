@@ -18,6 +18,7 @@ final class MultiCommitteeRepository
 {
     private PDO $pdo;
     private DataRepository $legacy;
+    private bool $committedWrite = false;
 
     public function __construct(?PDO $pdo = null, ?DataRepository $legacy = null)
     {
@@ -1151,6 +1152,7 @@ final class MultiCommitteeRepository
             }
             $this->updateLegacyMirror($committeeId, $committee, $settings, $data, $now);
             $this->pdo->commit();
+            $this->committedWrite = true;
         } catch (\Throwable $e) {
             if ($this->pdo->inTransaction()) {
                 $this->pdo->rollBack();
@@ -1159,6 +1161,11 @@ final class MultiCommitteeRepository
         }
 
         return $this->loadData($committeeId, $user);
+    }
+
+    public function hasCommittedWrite(): bool
+    {
+        return $this->committedWrite;
     }
 
     /** @return array{0: array, 1: array} */
