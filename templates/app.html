@@ -8391,7 +8391,7 @@ async function loadReport(){
   mount.innerHTML='<div style="padding:28px"><div class="skeleton" style="height:16px;margin-bottom:10px"></div><div class="skeleton" style="height:120px"></div></div>';
   let response=null;
   let _rptAuthErr=false;
-  try{const raw=await api.getReport({committeeId:activeCommitteeId||'',type,page:reportPage,perPage,search,month,status,sort});const candidate=raw.data||raw;if(Array.isArray(candidate.rows)&&Array.isArray(candidate.columns))response=candidate;}catch(e){const msg=String(e&&e.message||'');if(/401|not logged in|unauthorized|unauthenticated/i.test(msg)){_rptAuthErr=true;}/* Use the compatibility renderer if the server endpoint is unavailable. */}
+  try{const raw=await api.getReport({committeeId:activeCommitteeId||D.committeeId||1,type,page:reportPage,perPage,search,month,status,sort});const candidate=raw.data||raw;if(Array.isArray(candidate.rows)&&Array.isArray(candidate.columns))response=candidate;}catch(e){const msg=String(e&&e.message||'');if(/401|not logged in|unauthorized|unauthenticated/i.test(msg)){_rptAuthErr=true;}/* Use the compatibility renderer if the server endpoint is unavailable. */}
   if(requestId!==reportRequestSeq)return;
   if(response){
     reportState={columns:response.columns,rows:response.rows,summary:response.summary||{},total:Number(response.total||response.pagination?.total||response.rows.length),totalPages:Number(response.totalPages||response.pagination?.totalPages||1),page:Number(response.page||reportPage),source:'server'};
@@ -8624,7 +8624,7 @@ async function exportCurrentReport(format){
   let exportRows=reportState.allRows||reportState.rows;
   if(reportState.source==='server'&&reportState.total>exportRows.length){
     const typeForExport=document.getElementById('reportType').value;const search=document.getElementById('reportSearch').value.trim();const month=Math.max(0,parseInt(document.getElementById('reportMonth')?.value||'0',10)||0);const status=document.getElementById('reportStatus')?.value||'all';const sort=document.getElementById('reportSort').value;const pages=[];
-    for(let page=1;page<=reportState.totalPages;page++){const raw=await api.getReport({committeeId:activeCommitteeId||'',type:typeForExport,page,perPage:100,search,month,status,sort});const data=raw.data||raw;pages.push(...(data.rows||[]));}
+    for(let page=1;page<=reportState.totalPages;page++){const raw=await api.getReport({committeeId:activeCommitteeId||D.committeeId||1,type:typeForExport,page,perPage:100,search,month,status,sort});const data=raw.data||raw;pages.push(...(data.rows||[]));}
     exportRows=pages;
   }
   const rows=[reportState.columns.map(reportColumnName),...exportRows.map(row=>reportState.columns.map((c,i)=>reportCell(row,c,i)))];if(rows.length<2)return showToast('ℹ️ No report rows to export.');const type=document.getElementById('reportType').value;
