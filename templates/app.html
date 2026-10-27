@@ -6379,6 +6379,28 @@ async function resetPin(id){
     showToast('❌ '+(e.message||'Failed to reset PIN'));
   }
 }
+function showSheetPreview(rows,title,filename,onSave){
+  const MAX=200,bg=document.createElement('div');
+  bg.className='modal-bg open';bg.style.zIndex='3000';bg.style.padding='12px';
+  bg.innerHTML='<div class="modal" role="dialog" aria-modal="true" style="max-width:1100px;width:100%;height:100%;max-height:100%;display:flex;flex-direction:column;gap:10px;padding:14px"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><h3 style="margin:0;flex:1;min-width:160px"></h3><button type="button" class="btn btn-bl" data-a="save">Save file</button><button type="button" class="btn btn-outline" data-a="close">Close</button></div><div data-a="note" style="font-size:12px;opacity:.75"></div><div data-a="wrap" style="flex:1;overflow:auto;border:1px solid var(--border);border-radius:8px"></div></div>';
+  bg.querySelector('h3').textContent=title;
+  const total=Math.max(0,rows.length-1);
+  bg.querySelector('[data-a="note"]').textContent=filename+' · '+total+' row'+(total===1?'':'s')+(total>MAX?' (showing first '+MAX+')':'');
+  const table=document.createElement('table');table.style.cssText='border-collapse:collapse;width:100%;font-size:12px';
+  rows.slice(0,MAX+1).forEach((r,ri)=>{
+    const tr=document.createElement('tr');
+    r.forEach(v=>{const c=document.createElement(ri===0?'th':'td');c.textContent=spreadsheetSafe(v);c.style.cssText='border:1px solid var(--border);padding:6px 8px;text-align:left;white-space:nowrap'+(ri===0?';position:sticky;top:0;background:var(--card);font-weight:700':'');tr.appendChild(c);});
+    table.appendChild(tr);
+  });
+  bg.querySelector('[data-a="wrap"]').appendChild(table);
+  const close=()=>{bg.remove();document.removeEventListener('keydown',onKey);};
+  const onKey=e=>{if(e.key==='Escape')close();};
+  document.addEventListener('keydown',onKey);
+  bg.querySelector('[data-a="close"]').onclick=close;
+  bg.querySelector('[data-a="save"]').onclick=()=>{onSave();showToast('✅ '+filename+' saved.');};
+  bg.addEventListener('click',e=>{if(e.target===bg)close();});
+  document.body.appendChild(bg);
+}
 function showPdfPreview(pdf,filename,onDownload){
   const url=URL.createObjectURL(pdf.output('blob'));
   const bg=document.createElement('div');
@@ -7240,7 +7262,7 @@ function spreadsheetSafe(value){const s=String(value??'');return /^[=+\-@]/.test
 function csvCell(value){const s=spreadsheetSafe(value).replace(/"/g,'""');return `"${s}"`;}
 function downloadBlob(content,type,name){const blob=new Blob([content],{type});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000);}
 function winnerExportRows(){return enterpriseWinnerFilteredList().map(w=>[w.memberId,w.name,pick(w,['committeeName'],activeCommittee().name),getWinnerDrawNumber(w),winnerDateValue(w),w.sharesWon||1,w.amount||0,winnerPaymentStatus(w,D.members.find(m=>Number(m.id)===Number(w.memberId))),w.archivedAt?'Archived':'Active']);}
-exportWinnersCSV=function(){const rows=[['Member ID','Name','Committee','Draw Number','Date','Shares Won','Prize','Payment Status','Record Status'],...winnerExportRows()];downloadBlob(rows.map(r=>r.map(csvCell).join(',')).join('\r\n'),'text/csv;charset=utf-8','winner-history.csv');api.logReportExport(activeCommitteeId,'winner','csv').catch(()=>{});showToast('✅ Winner history exported.');};
+exportWinnersCSV=function(){const rows=[['Member ID','Name','Committee','Draw Number','Date','Shares Won','Prize','Payment Status','Record Status'],...winnerExportRows()];if(rows.length<2)return showToast('ℹ️ No winners to export.');showSheetPreview(rows,'Winner history · CSV','winner-history.csv',()=>{downloadBlob(rows.map(r=>r.map(csvCell).join(',')).join('\r\n'),'text/csv;charset=utf-8','winner-history.csv');api.logReportExport(activeCommitteeId,'winner','csv').catch(()=>{});});};
 async function exportWinnerHistory(format){
   if(format==='pdf'){
     const list=enterpriseWinnerFilteredList();if(!list.length)return showToast('ℹ️ No winners to export.');
@@ -7306,7 +7328,7 @@ async function exportWinnerHistory(format){
     }catch(e){return showToast('❌ '+(e.message||'PDF export failed'));}
   }else if(format==='excel'){
     const rows=[['Member ID','Name','Committee','Draw Number','Date','Shares Won','Prize','Payment Status','Record Status'],...winnerExportRows()];
-    const xml=`<?xml version="1.0"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Winners"><Table>${rows.map(r=>`<Row>${r.map(v=>`<Cell><Data ss:Type="String">${esc(spreadsheetSafe(v))}</Data></Cell>`).join('')}</Row>`).join('')}</Table></Worksheet></Workbook>`;downloadBlob(xml,'application/vnd.ms-excel','winner-history.xls');
+    const xml=`<?xml version="1.0"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Winners"><Table>${rows.map(r=>`<Row>${r.map(v=>`<Cell><Data ss:Type="String">${esc(spreadsheetSafe(v))}</Data></Cell>`).join('')}</Row>`).join('')}</Table></Worksheet></Workbook>`;showSheetPreview(rows,'Winner history · Excel','winner-history.xls',()=>{downloadBlob(xml,'application/vnd.ms-excel','winner-history.xls');api.logReportExport(activeCommitteeId,'winner','excel').catch(()=>{});});return;
   }
   api.logReportExport(activeCommitteeId,'winner',format).catch(()=>{});showToast('✅ Winner history exported.');
 }
@@ -8662,8 +8684,8 @@ async function exportCurrentReport(format){
     exportRows=pages;
   }
   const rows=[reportState.columns.map(reportColumnName),...exportRows.map(row=>reportState.columns.map((c,i)=>reportCell(row,c,i)))];if(rows.length<2)return showToast('ℹ️ No report rows to export.');const type=document.getElementById('reportType').value;
-  if(format==='csv')downloadBlob(rows.map(r=>r.map(csvCell).join(',')).join('\r\n'),'text/csv;charset=utf-8',`${type}-report.csv`);
-  else if(format==='excel'){const xml=`<?xml version="1.0"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Report"><Table>${rows.map(r=>`<Row>${r.map(v=>`<Cell><Data ss:Type="String">${esc(spreadsheetSafe(v))}</Data></Cell>`).join('')}</Row>`).join('')}</Table></Worksheet></Workbook>`;downloadBlob(xml,'application/vnd.ms-excel',`${type}-report.xls`);}
+  if(format==='csv'){showSheetPreview(rows,'Report · CSV',`${type}-report.csv`,()=>{downloadBlob(rows.map(r=>r.map(csvCell).join(',')).join('\r\n'),'text/csv;charset=utf-8',`${type}-report.csv`);api.logReportExport(activeCommitteeId,type,'csv').catch(()=>{});});return;}
+  else if(format==='excel'){const xml=`<?xml version="1.0"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Report"><Table>${rows.map(r=>`<Row>${r.map(v=>`<Cell><Data ss:Type="String">${esc(spreadsheetSafe(v))}</Data></Cell>`).join('')}</Row>`).join('')}</Table></Worksheet></Workbook>`;showSheetPreview(rows,'Report · Excel',`${type}-report.xls`,()=>{downloadBlob(xml,'application/vnd.ms-excel',`${type}-report.xls`);api.logReportExport(activeCommitteeId,type,'excel').catch(()=>{});});return;}
   else if(format==='print'){const win=window.open('','_blank');if(!win)return showToast('❌ Popup blocked.');win.document.write(`<html><head><title>${esc(type)} Report</title><style>body{font-family:Arial;padding:24px}table{border-collapse:collapse;width:100%;font-size:12px}th,td{border:1px solid #ddd;padding:7px;text-align:left}th{background:#f1f5f9}</style></head><body><h2>${esc(D.committeeName)} — ${esc(type.replace(/-/g,' '))}</h2>${document.getElementById('reportResults').innerHTML}</body></html>`);win.document.close();win.focus();setTimeout(()=>win.print(),200);}
   else if(format==='pdf'){try{
     const JsPDF=(window.jspdf&&window.jspdf.jsPDF)||window.jsPDF;
