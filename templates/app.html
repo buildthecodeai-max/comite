@@ -1017,6 +1017,25 @@ td.act-cell,td .action-group{text-align:center;}
 .rpt-ov-mini-tbl td{padding:5px 6px;color:var(--dark);border-bottom:1px solid var(--border);white-space:nowrap;}
 .rpt-ov-mini-tbl td.r{text-align:right;font-variant-numeric:tabular-nums;}
 .rpt-ov-mini-tbl tr:last-child td{border-bottom:none;}
+
+.rpt-ov-ins{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;}
+.rpt-ov-ins .rpt-ov-wide{grid-column:1/-1;}
+.rpt-ov-big{font-size:22px;font-weight:800;color:var(--dark);line-height:1.1;font-variant-numeric:tabular-nums;}
+.rpt-ov-note{font-size:11px;color:var(--muted);margin-top:2px;}
+.rpt-ov-statgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;}
+.rpt-ov-bar{height:7px;border-radius:99px;background:var(--border);overflow:hidden;margin:6px 0;}
+.rpt-ov-bar>i{display:block;height:100%;border-radius:99px;}
+.rpt-ov-list{display:flex;flex-direction:column;}
+.rpt-ov-li{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;}
+.rpt-ov-li:last-child{border-bottom:none;}
+.rpt-ov-li-main{min-width:0;flex:1;}
+.rpt-ov-li-name{font-weight:600;color:var(--dark);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.rpt-ov-li-sub{font-size:10px;color:var(--muted);}
+.rpt-ov-li-val{font-weight:700;color:var(--dark);white-space:nowrap;font-variant-numeric:tabular-nums;text-align:right;}
+.rpt-ov-link{font-size:11px;font-weight:600;color:var(--primary);cursor:pointer;margin-top:8px;display:inline-block;}
+.rpt-ov-cur td{background:rgba(79,70,229,.07);}
+.rpt-ov-scroll{max-height:340px;overflow:auto;}
+.rpt-ov-empty{font-size:12px;color:var(--muted);padding:10px 0;}
 .report-money{font-variant-numeric:tabular-nums;font-weight:700;}
 /* === WINNER HISTORY ENHANCED TABLE === */
 .wh-tbl{width:100%;border-collapse:collapse;font-size:12px;}
@@ -8312,6 +8331,77 @@ function resetReportFilters(){
   const r=document.getElementById('reportRows');if(r)r.value='25';
   reportPage=1;loadReport();
 }
+function renderOverviewInsights(cur){
+  const money=v=>esc(formatMoney(v,cur));
+  const mLbl=i=>D.startMonth?monthNumLabel(i):'M'+i;
+  const totalMonths=Number(D.totalMonths)||1,curMonth=Math.max(1,Number(D.currentMonth)||1);
+  const wins=(D.winners||[]).filter(w=>!w.archivedAt&&!w.deletedAt&&String(w.status||'declared').toLowerCase()!=='voided');
+  const members=D.members||[];
+  const badge=st=>`<span class="win-badge win-badge-${winnerStatusClass(st)}">${esc(st)}</span>`;
+  const link=(t,label)=>`<span class="rpt-ov-link" onclick="setReportType('${t}')">${esc(label)} →</span>`;
+
+  /* 1. Monthly winners */
+  const monthRows=Array.from({length:totalMonths},(_,i)=>i+1).map(mon=>{
+    const w=wins.filter(x=>Number(x.month)===mon).sort((a,b)=>getWinnerDrawNumber(a)-getWinnerDrawNumber(b));
+    const cls=mon===curMonth?' class="rpt-ov-cur"':'';
+    if(!w.length){const future=mon>curMonth;return `<tr${cls}><td>${esc(mLbl(mon))}${mon===curMonth?' ●':''}</td><td colspan="4" style="color:var(--muted)">${future?'No draw yet':'No winner declared'}</td></tr>`;}
+    const shares=w.reduce((n,x)=>n+(Number(x.sharesWon)||1),0),prize=w.reduce((n,x)=>n+Number(x.amount||0),0);
+    const names=w.map(x=>`${esc(x.name||'Unknown')} <span style="color:var(--muted)">(${Number(x.sharesWon)||1} sh)</span>`).join(', ');
+    const sts=w.map(x=>winnerPaymentStatus(x,null));const allPaid=sts.every(s=>s==='paid');
+    return `<tr${cls}><td>${esc(mLbl(mon))}${mon===curMonth?' ●':''}</td><td style="white-space:normal;min-width:180px">${names}</td><td class="r">${shares}</td><td class="r">${money(prize)}</td><td>${allPaid?badge('paid'):badge(sts.includes('late')?'late':'pending')}</td></tr>`;
+  }).join('');
+  const monthlyCard=`<div class="rpt-ov-card rpt-ov-wide"><div class="rpt-ov-card-hdr">Who won each month</div><div class="rpt-ov-scroll rpt-ov-mini-tbl-wrap"><table class="rpt-ov-mini-tbl"><thead><tr><th>Month</th><th>Winners</th><th class="r">Shares</th><th class="r">Prize</th><th>Payout</th></tr></thead><tbody>${monthRows}</tbody></table></div>${link('month-winner-summary','Full monthly winners report')}</div>`;
+
+  /* 2. Share balance */
+  const totalShares=members.reduce((n,m)=>n+Number(m.shares||0),0);
+  const wonShares=members.reduce((n,m)=>n+Math.min(Number(m.shares||0),getMemberSharesWon(m.id)),0);
+  const remShares=Math.max(0,totalShares-wonShares);
+  const remPrize=remShares*Number(D.prizePerShare||0);
+  const monthsLeft=Math.max(0,totalMonths-curMonth);
+  const pace=monthsLeft>0?Math.ceil(remShares/monthsLeft):null;
+  const wonPct=totalShares?Math.round(100*wonShares/totalShares):0;
+  const shareCard=`<div class="rpt-ov-card"><div class="rpt-ov-card-hdr">Share balance</div>
+    <div class="rpt-ov-statgrid"><div><div class="rpt-ov-big">${totalShares}</div><div class="rpt-ov-note">Total shares</div></div><div><div class="rpt-ov-big" style="color:#10B981">${wonShares}</div><div class="rpt-ov-note">Won</div></div><div><div class="rpt-ov-big" style="color:#F59E0B">${remShares}</div><div class="rpt-ov-note">Remaining</div></div></div>
+    <div class="rpt-ov-bar"><i style="width:${wonPct}%;background:#10B981"></i></div>
+    <div class="rpt-ov-note">${wonPct}% of shares have won · remaining prize ${money(remPrize)}</div>
+    <div class="rpt-ov-note">${monthsLeft} month${monthsLeft===1?'':'s'} left${pace!==null?` · about ${pace} share${pace===1?'':'s'} per month to finish`:''}</div>
+    ${link('share-details','Share details report')}</div>`;
+
+  /* 3. Never won */
+  const never=members.filter(m=>getMemberWins(m.id).length===0).sort((a,b)=>Number(b.shares||0)-Number(a.shares||0)||String(a.name||'').localeCompare(String(b.name||'')));
+  const neverShares=never.reduce((n,m)=>n+Number(m.shares||0),0);
+  const paidMonths=m=>Object.keys(m.payments||{}).filter(k=>/^M\d+$/.test(k)&&m.payments[k]).length;
+  const neverCard=`<div class="rpt-ov-card"><div class="rpt-ov-card-hdr">Never won</div>
+    <div class="rpt-ov-statgrid" style="grid-template-columns:repeat(2,1fr)"><div><div class="rpt-ov-big" style="color:#EF4444">${never.length}</div><div class="rpt-ov-note">of ${members.length} members</div></div><div><div class="rpt-ov-big">${neverShares}</div><div class="rpt-ov-note">Shares held</div></div></div>
+    ${never.length?`<div class="rpt-ov-list">${never.slice(0,5).map(m=>`<div class="rpt-ov-li"><div class="rpt-ov-li-main"><div class="rpt-ov-li-name">${esc(memberName(m))}</div><div class="rpt-ov-li-sub">${paidMonths(m)} month${paidMonths(m)===1?'':'s'} paid</div></div><div class="rpt-ov-li-val">${Number(m.shares||0)} sh</div></div>`).join('')}</div>`:'<div class="rpt-ov-empty">Every member has won at least once.</div>'}
+    ${never.length>5?`<div class="rpt-ov-note">+ ${never.length-5} more</div>`:''}${link('no-win-members','All members who never won')}</div>`;
+
+  /* 4. Unpaid prizes */
+  const unpaid=wins.filter(w=>winnerPaymentStatus(w,null)!=='paid').sort((a,b)=>Number(a.month)-Number(b.month));
+  const unpaidTotal=unpaid.reduce((n,w)=>n+Number(w.amount||0),0);
+  const unpaidCard=`<div class="rpt-ov-card"><div class="rpt-ov-card-hdr">Unpaid prizes</div>
+    <div class="rpt-ov-statgrid" style="grid-template-columns:repeat(2,1fr)"><div><div class="rpt-ov-big" style="color:${unpaid.length?'#F59E0B':'#10B981'}">${unpaid.length}</div><div class="rpt-ov-note">winners awaiting payout</div></div><div><div class="rpt-ov-big" style="font-size:16px;white-space:nowrap">${money(unpaidTotal)}</div><div class="rpt-ov-note">to be paid</div></div></div>
+    ${unpaid.length?`<div class="rpt-ov-list">${unpaid.slice(0,6).map(w=>`<div class="rpt-ov-li"><div class="rpt-ov-li-main"><div class="rpt-ov-li-name">${esc(w.name||'Unknown')}</div><div class="rpt-ov-li-sub">${esc(mLbl(Number(w.month)))} · ${badge(winnerPaymentStatus(w,null))}</div></div><div class="rpt-ov-li-val">${money(Number(w.amount||0))}</div></div>`).join('')}</div>`:'<div class="rpt-ov-empty">All winner payouts are complete.</div>'}
+    ${unpaid.length>6?`<div class="rpt-ov-note">+ ${unpaid.length-6} more</div>`:''}${link('winner','Winner payout report')}</div>`;
+
+  /* 5. Members with remaining shares */
+  const partial=members.map(m=>({m,won:getMemberSharesWon(m.id),rem:getMemberSharesPending(m)})).filter(x=>x.won>0&&x.rem>0).sort((a,b)=>b.rem-a.rem||b.won-a.won);
+  const partialCard=`<div class="rpt-ov-card"><div class="rpt-ov-card-hdr">Won some, shares still remaining</div>
+    ${partial.length?`<div class="rpt-ov-list">${partial.slice(0,8).map(x=>{const pct=Math.round(100*x.won/Math.max(1,Number(x.m.shares||1)));return `<div class="rpt-ov-li"><div class="rpt-ov-li-main"><div class="rpt-ov-li-name">${esc(memberName(x.m))}</div><div class="rpt-ov-bar" style="margin:3px 0"><i style="width:${pct}%;background:#4F46E5"></i></div><div class="rpt-ov-li-sub">won ${x.won} of ${Number(x.m.shares||0)} shares</div></div><div class="rpt-ov-li-val">${x.rem} left</div></div>`;}).join('')}</div>`:'<div class="rpt-ov-empty">No member has partially won shares.</div>'}
+    ${partial.length>8?`<div class="rpt-ov-note">+ ${partial.length-8} more</div>`:''}${link('winner-history','Winner history report')}</div>`;
+
+  /* 6. This month's collection */
+  const cs=monthCollectionStats(curMonth);
+  const owe=members.filter(m=>!(m.payments&&m.payments['M'+curMonth])).sort((a,b)=>Number(b.shares||0)-Number(a.shares||0));
+  const collCard=`<div class="rpt-ov-card"><div class="rpt-ov-card-hdr">${esc(mLbl(curMonth))} collection</div>
+    <div class="rpt-ov-big">${cs.paidCount} <span style="font-size:13px;font-weight:600;color:var(--muted)">of ${cs.total} paid</span></div>
+    <div class="rpt-ov-bar"><i style="width:${cs.pct}%;background:${cs.pct>=100?'#10B981':'#4F46E5'}"></i></div>
+    <div class="rpt-ov-note">${money(cs.received)} collected · ${money(Math.max(0,cs.due-cs.received))} outstanding</div>
+    ${owe.length?`<div class="rpt-ov-list" style="margin-top:8px">${owe.slice(0,6).map(m=>`<div class="rpt-ov-li"><div class="rpt-ov-li-main"><div class="rpt-ov-li-name">${esc(memberName(m))}</div><div class="rpt-ov-li-sub">${Number(m.shares||0)} share${Number(m.shares||0)===1?'':'s'}</div></div><div class="rpt-ov-li-val">${money(Number(m.shares||0)*Number(D.amtPerShare||0))}</div></div>`).join('')}</div>${owe.length>6?`<div class="rpt-ov-note">+ ${owe.length-6} more unpaid</div>`:''}`:'<div class="rpt-ov-empty">Everyone has paid this month.</div>'}
+    ${link('defaulters','Defaulters report')}</div>`;
+
+  return `<div class="rpt-ov-ins">${monthlyCard}${shareCard}${neverCard}${unpaidCard}${partialCard}${collCard}</div>`;
+}
 function renderReportOverview(){
   const mount=document.getElementById('reportResults');if(!mount)return;
   const sumEl=document.getElementById('reportSummary');const pager=document.getElementById('reportPagination');const resultCount=document.getElementById('reportResultCount');
@@ -8372,6 +8462,7 @@ function renderReportOverview(){
       ${kpiCard('linear-gradient(135deg,#F59E0B,#FCD34D)','<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>','Pending Payments',formatMoney(totalPending,cur),defaulterIds.size+' members pending')}
       ${kpiCard('linear-gradient(135deg,#0891B2,#38BDF8)','<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>','Collection Rate',avgRate+'%',monthsWithWinner+' months with winner')}
     </div>
+    ${renderOverviewInsights(cur)}
     <div class="rpt-ov-charts">
       <div class="rpt-ov-chart-card">
         <div class="rpt-ov-chart-hdr">
