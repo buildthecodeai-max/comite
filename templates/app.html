@@ -2417,7 +2417,11 @@ td.act-cell,td .action-group{text-align:center;}
         </div>
         <div class="sfc-body">
           <p style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.6">Download a JSON backup after making changes to keep your data safe. Always share the latest backup — not an older copy.</p>
-          <button class="btn btn-gr" onclick="exportJSON()">Download JSON Backup</button>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+            <button class="btn btn-gr" onclick="exportJSON()">Download JSON Backup</button>
+            <button class="btn" style="background:var(--card);border:1.5px solid var(--border);color:var(--dark)" onclick="document.getElementById('restoreFileInput').click()">&#8593; Restore from JSON Backup</button>
+            <input type="file" id="restoreFileInput" accept=".json,application/json" style="display:none" onchange="importJSON(this)">
+          </div>
         </div>
       </div>
     </div>
@@ -3051,6 +3055,34 @@ async function exportJSON(){
     showToast('✅ JSON backup downloaded.');
   }catch(err){
     alert('Export error: '+err.message);
+  }
+}
+
+async function importJSON(input){
+  const file=input.files[0];
+  input.value='';
+  if(!file) return;
+  try{
+    const text=await file.text();
+    const parsed=JSON.parse(text);
+    if(!Array.isArray(parsed.members)){
+      alert('Invalid backup file — missing members data.');
+      return;
+    }
+    const mCount=parsed.members.length;
+    const wCount=Array.isArray(parsed.winners)?parsed.winners.length:0;
+    const pCount=parsed.members.reduce((s,m)=>s+(Array.isArray(m.payments)?m.payments.length:0),0);
+    const name=parsed.committeeName||'(unnamed)';
+    if(!confirm(`Restore backup?\n\nCommittee: ${name}\nMembers: ${mCount}\nWinners: ${wCount}\nPayment records: ${pCount}\n\n⚠️ This will OVERWRITE all current data. This cannot be undone.`)) return;
+    showLoading('Restoring…');
+    D=normalizeData(parsed);
+    await save();
+    hideLoading();
+    showToast('✅ Data restored from backup.');
+    setTimeout(()=>location.reload(),800);
+  }catch(err){
+    hideLoading();
+    alert('Restore failed: '+(err.message||err));
   }
 }
 
